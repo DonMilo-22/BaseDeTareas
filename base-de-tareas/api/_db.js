@@ -92,6 +92,22 @@ export async function initDatabase() {
     );
   `);
 
+  // Migración para activity_logs: agregar created_at si no existe
+  try {
+    await db.execute(`
+    ALTER TABLE activity_logs
+    ADD COLUMN created_at DATETIME
+  `);
+
+    await db.execute(`
+    UPDATE activity_logs
+    SET created_at = CURRENT_TIMESTAMP
+    WHERE created_at IS NULL
+  `);
+  } catch (e) {
+    // La columna ya existe
+  }
+
   // Crear índices para mayor velocidad
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_tasks_class ON tasks(class_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_completions_task ON task_completions(task_id);`);
