@@ -5,8 +5,16 @@ import bcrypt from "bcryptjs";
 dotenv.config();
 
 // Conectar con Turso si existen las variables, o fallback a archivo SQLite local
-const url = process.env.TURSO_DATABASE_URL || "file:local.db";
-const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+const url = process.env.TURSO_DATABASE_URL;
+const authToken = process.env.TURSO_AUTH_TOKEN;
+
+if (!url) {
+  throw new Error("TURSO_DATABASE_URL is not configured");
+}
+
+if (!authToken) {
+  throw new Error("TURSO_AUTH_TOKEN is not configured");
+}
 
 export const db = createClient({
   url,
