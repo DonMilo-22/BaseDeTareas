@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     });
 
     const user = {
-      id: result.lastInsertRowid,
+      id: Number(result.lastInsertRowid),
       name: name.trim(),
       email: email.trim().toLowerCase(),
       avatar_url: defaultAvatar,
