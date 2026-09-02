@@ -58,17 +58,21 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Iniciar servidor e inicializar DB
-initDatabase()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`\n======================================================`);
-      console.log(`🚀 Base de Tareas está corriendo en: http://localhost:${PORT}`);
-      console.log(`✨ Estética Glassmorphism UI/UX Pro Max activa`);
-      console.log(`💾 Base de datos Turso / LibSQL lista`);
-      console.log(`======================================================\n`);
-    });
-  })
-  .catch((err) => {
-    console.error("Error al inicializar la base de datos:", err);
+// Inicializar DB
+initDatabase().catch((err) => {
+  console.error("Error al inicializar la base de datos:", err);
+});
+
+// Para desarrollo local: iniciar servidor
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n======================================================`);
+    console.log(`🚀 Base de Tareas está corriendo en: http://localhost:${PORT}`);
+    console.log(`✨ Estética Glassmorphism UI/UX Pro Max activa`);
+    console.log(`💾 Base de datos Turso / LibSQL lista`);
+    console.log(`======================================================\n`);
   });
+}
+
+// Para Vercel serverless: exportar la app
+export default app;
