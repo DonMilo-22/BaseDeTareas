@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.local
 .env.production
+.env.example
 .env.*
 
 # Base de datos local (solo para desarrollo en tu Mac)
