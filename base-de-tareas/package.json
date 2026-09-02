@@ -1,0 +1,30 @@
+{
+  "name": "base-de-tareas",
+  "version": "1.0.0",
+  "description": "Base de Tareas - Recordatorios colaborativos de clases y tareas escolares con Turso y Vercel",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "tareas",
+    "clases",
+    "recordatorios",
+    "turso",
+    "vercel",
+    "glassmorphism",
+    "colaborativo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@libsql/client": "^0.14.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
