@@ -18,7 +18,7 @@ export default async function handler(req, res) {
                u_cr.name as creator_name, u_cr.avatar_url as creator_avatar,
                u_up.name as updater_name, u_up.avatar_url as updater_avatar
         FROM tasks t
-        JOIN classes c ON t.class_id = c.id
+        LEFT JOIN classes c ON CAST(t.class_id AS NUMERIC) = CAST(c.id AS NUMERIC)
         LEFT JOIN users u_cr ON t.created_by = u_cr.id
         LEFT JOIN users u_up ON t.updated_by = u_up.id
         WHERE 1=1
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       const args = [];
 
       if (class_id && class_id !== "todas") {
-        query += " AND t.class_id = ?";
+        query += " AND CAST(t.class_id AS NUMERIC) = CAST(? AS NUMERIC)";
         args.push(class_id);
       }
 

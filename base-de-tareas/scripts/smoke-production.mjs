@@ -197,3 +197,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 11: contempla propagación de lecturas entre funciones serverless.
 
 // Versión 12: usa el ID real devuelto por RETURNING.
+
+// Versión 13: valida relaciones con IDs numéricos normalizados.
