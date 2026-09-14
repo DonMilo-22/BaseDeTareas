@@ -138,6 +138,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "La clase, título y fecha límite son obligatorios." });
       }
 
+      const classRes = await db.execute({
+        sql: "SELECT id FROM classes WHERE id = ? OR CAST(id AS TEXT) = CAST(? AS TEXT) LIMIT 1;",
+        args: [class_id, class_id],
+      });
+      if (classRes.rows.length === 0) {
+        return res.status(404).json({ error: "La clase seleccionada no existe." });
+      }
+
+      const storedClassId = classRes.rows[0].id;
       const taskId = "tsk_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
       const photosJson = JSON.stringify(Array.isArray(photos) ? photos : []);
       const nowIso = new Date().toISOString();
@@ -148,7 +157,7 @@ export default async function handler(req, res) {
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         args: [
           taskId,
-          class_id,
+          storedClassId,
           title.trim(),
           taskTopic,
           (description || "").trim(),
@@ -163,7 +172,7 @@ export default async function handler(req, res) {
       });
 
       // Obtener nombre de la clase para el log
-      const clsRes = await db.execute({ sql: "SELECT name FROM classes WHERE id = ?;", args: [class_id] });
+      const clsRes = await db.execute({ sql: "SELECT name FROM classes WHERE id = ?;", args: [storedClassId] });
       const className = clsRes.rows[0]?.name || "Clase";
 
       const photosCount = Array.isArray(photos) ? photos.length : 0;

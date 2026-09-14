@@ -99,7 +99,8 @@ export default async function handler(req, res) {
 
       const result = await db.execute({
         sql: `INSERT INTO classes (name, code, teacher, schedule, color, icon, topics, created_by)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              RETURNING id;`,
         args: [
           name.trim(),
           (code || "").trim(),
@@ -111,7 +112,7 @@ export default async function handler(req, res) {
           userAuth.id,
         ],
       });
-      const classId = Number(result.lastInsertRowid);
+      const classId = result.rows[0]?.id ?? Number(result.lastInsertRowid);
 
       // Log activity
       await logActivity(db, {

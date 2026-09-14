@@ -195,3 +195,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 10: valida IDs de texto para tareas y estados.
 
 // Versión 11: contempla propagación de lecturas entre funciones serverless.
+
+// Versión 12: usa el ID real devuelto por RETURNING.
