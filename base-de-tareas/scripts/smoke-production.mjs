@@ -135,7 +135,7 @@ const filtered = await request(
   `/api/tasks?class_id=${encodeURIComponent(classId)}&topic=${encodeURIComponent("Tema de verificación")}`,
   { token: updatedToken }
 );
-assert(filtered.data.tasks.some(task => task.id === taskId));
+assert(filtered.data.tasks.some(task => String(task.id) === String(taskId)));
 
 await request("/api/tasks/status", {
   method: "POST",
@@ -163,7 +163,7 @@ const afterDelete = await request(
   `/api/tasks?class_id=${encodeURIComponent(classId)}`,
   { token: updatedToken }
 );
-assert(!afterDelete.data.tasks.some(task => task.id === taskId));
+assert(!afterDelete.data.tasks.some(task => String(task.id) === String(taskId)));
 
 console.log(`Verificación completada. Cuenta creada: ${email}`);
 
@@ -172,3 +172,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 4: valida migraciones completas de tablas antiguas.
 
 // Versión 5: valida IDs numéricos autoincrementales.
+
+// Versión 6: normaliza tipos de ID devueltos por LibSQL.
