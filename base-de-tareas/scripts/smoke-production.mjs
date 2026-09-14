@@ -131,15 +131,21 @@ const createdTask = await request("/api/tasks", {
 const taskId = createdTask.data.taskId;
 assert(taskId);
 
-const filtered = await request(
-  `/api/tasks?class_id=${encodeURIComponent(classId)}&topic=${encodeURIComponent("Tema de verificación")}`,
-  { token: updatedToken }
-);
+let filtered;
+let taskWasReturned = false;
+for (let attempt = 1; attempt <= 10; attempt++) {
+  filtered = await request(
+    `/api/tasks?class_id=${encodeURIComponent(classId)}&topic=${encodeURIComponent("Tema de verificación")}`,
+    { token: updatedToken }
+  );
+  taskWasReturned = filtered.data.tasks.some(task => String(task.id) === String(taskId));
+  if (taskWasReturned) break;
+  await new Promise(resolve => setTimeout(resolve, 3000));
+}
 const allTasks = await request("/api/tasks", { token: updatedToken });
-const taskWasReturned = filtered.data.tasks.some(task => String(task.id) === String(taskId));
 assert(
   taskWasReturned,
-  `La tarea creada ${taskId} no apareció con filtros. Filtrada: ${JSON.stringify(filtered.data)}. Todas: ${JSON.stringify(allTasks.data)}`
+  `La tarea creada ${taskId} no apareció después de reintentos. Filtrada: ${JSON.stringify(filtered.data)}. Todas: ${JSON.stringify(allTasks.data)}`
 );
 
 await request("/api/tasks/status", {
@@ -187,3 +193,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 9: compara consulta filtrada contra la consulta completa.
 
 // Versión 10: valida IDs de texto para tareas y estados.
+
+// Versión 11: contempla propagación de lecturas entre funciones serverless.
