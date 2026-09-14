@@ -82,5 +82,24 @@ export default async function handler(req, res) {
     }
   }
 
+  if (req.method === "DELETE") {
+    try {
+      // Eliminar primero las relaciones para mantener la integridad de la base.
+      await db.execute({ sql: "DELETE FROM task_completions WHERE user_id = ?;", args: [userAuth.id] });
+      await db.execute({ sql: "DELETE FROM activity_logs WHERE user_id = ?;", args: [userAuth.id] });
+      await db.execute({ sql: "UPDATE classes SET created_by = NULL WHERE created_by = ?;", args: [userAuth.id] });
+      await db.execute({
+        sql: "UPDATE tasks SET created_by = CASE WHEN created_by = ? THEN NULL ELSE created_by END, updated_by = CASE WHEN updated_by = ? THEN NULL ELSE updated_by END;",
+        args: [userAuth.id, userAuth.id],
+      });
+      await db.execute({ sql: "DELETE FROM users WHERE id = ?;", args: [userAuth.id] });
+
+      return res.status(200).json({ message: "Cuenta eliminada correctamente." });
+    } catch (error) {
+      console.error("Error en auth/me DELETE:", error);
+      return res.status(500).json({ error: "Error al eliminar la cuenta: " + error.message });
+    }
+  }
+
   return res.status(405).json({ error: "Método no permitido." });
 }

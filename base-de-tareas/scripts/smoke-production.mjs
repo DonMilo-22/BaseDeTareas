@@ -157,7 +157,7 @@ const stats = await request("/api/stats", { token: updatedToken });
 assert(stats.data.myCompletedTasks >= 1);
 
 await request("/api/activity?limit=10", { token: updatedToken });
-await request("/api/users", { token: updatedToken });
+const usersBeforeCleanup = await request("/api/users", { token: updatedToken });
 
 await request("/api/tasks", {
   method: "DELETE",
@@ -176,7 +176,38 @@ const afterDelete = await request(
 );
 assert(!afterDelete.data.tasks.some(task => String(task.id) === String(taskId)));
 
-console.log(`Verificación completada. Cuenta creada: ${email}`);
+// Limpiar datos dejados por ejecuciones de diagnóstico anteriores.
+const legacyClasses = await request("/api/classes", { token: updatedToken });
+for (const item of legacyClasses.data.classes || []) {
+  if (String(item.code || "").startsWith("TEST-") && String(item.id) !== String(classId)) {
+    await request("/api/classes", {
+      method: "DELETE",
+      token: updatedToken,
+      body: JSON.stringify({ id: item.id }),
+    });
+  }
+}
+
+for (const oldUser of usersBeforeCleanup.data.users || []) {
+  if (oldUser.email === email) continue;
+  const match = /^codex\.verificacion\.([a-f0-9]+)@example\.com$/i.exec(oldUser.email || "");
+  if (!match) continue;
+
+  try {
+    const oldLogin = await request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: oldUser.email, password: `Prueba-${match[1]}!` }),
+    });
+    await request("/api/auth/me", {
+      method: "DELETE",
+      token: oldLogin.data.token,
+    });
+  } catch (error) {
+    console.warn(`No se pudo limpiar la cuenta temporal ${oldUser.email}: ${error.message}`);
+  }
+}
+
+console.log(`Verificación completada. Cuenta conservada: ${email}`);
 
 // Versión 3: valida migraciones de activity_logs.
 
@@ -199,3 +230,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 12: usa el ID real devuelto por RETURNING.
 
 // Versión 13: valida relaciones con IDs numéricos normalizados.
+
+// Versión 14: limpia datos temporales y conserva una cuenta verificada.
