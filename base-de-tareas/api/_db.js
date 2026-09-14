@@ -117,6 +117,46 @@ export async function initDatabase() {
     WHERE created_at IS NULL
   `);
 
+  // Completar esquemas antiguos sin eliminar la información existente.
+  const legacyMigrations = [
+    "ALTER TABLE users ADD COLUMN name TEXT",
+    "ALTER TABLE users ADD COLUMN email TEXT",
+    "ALTER TABLE users ADD COLUMN password_hash TEXT",
+    "ALTER TABLE users ADD COLUMN avatar_url TEXT",
+    "ALTER TABLE users ADD COLUMN created_at DATETIME",
+    "ALTER TABLE classes ADD COLUMN code TEXT",
+    "ALTER TABLE classes ADD COLUMN teacher TEXT",
+    "ALTER TABLE classes ADD COLUMN schedule TEXT",
+    "ALTER TABLE classes ADD COLUMN color TEXT DEFAULT '#6366f1'",
+    "ALTER TABLE classes ADD COLUMN icon TEXT DEFAULT '📚'",
+    "ALTER TABLE classes ADD COLUMN created_by INTEGER",
+    "ALTER TABLE classes ADD COLUMN created_at DATETIME",
+    "ALTER TABLE classes ADD COLUMN topics TEXT DEFAULT '[\"Tema 1\", \"Tema 2\", \"Tema 3\"]'",
+    "ALTER TABLE tasks ADD COLUMN class_id TEXT",
+    "ALTER TABLE tasks ADD COLUMN title TEXT",
+    "ALTER TABLE tasks ADD COLUMN description TEXT",
+    "ALTER TABLE tasks ADD COLUMN due_date DATETIME",
+    "ALTER TABLE tasks ADD COLUMN priority TEXT DEFAULT 'media'",
+    "ALTER TABLE tasks ADD COLUMN photos TEXT DEFAULT '[]'",
+    "ALTER TABLE tasks ADD COLUMN created_by INTEGER",
+    "ALTER TABLE tasks ADD COLUMN updated_by INTEGER",
+    "ALTER TABLE tasks ADD COLUMN created_at DATETIME",
+    "ALTER TABLE tasks ADD COLUMN updated_at DATETIME",
+    "ALTER TABLE tasks ADD COLUMN topic TEXT DEFAULT 'Tema 1'",
+    "ALTER TABLE task_completions ADD COLUMN task_id TEXT",
+    "ALTER TABLE task_completions ADD COLUMN user_id INTEGER",
+    "ALTER TABLE task_completions ADD COLUMN completed INTEGER DEFAULT 1",
+    "ALTER TABLE task_completions ADD COLUMN completed_at DATETIME",
+  ];
+
+  for (const statement of legacyMigrations) {
+    try {
+      await db.execute(statement);
+    } catch (error) {
+      // La columna ya existe.
+    }
+  }
+
   // Crear índices para mayor velocidad
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_tasks_class ON tasks(class_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_completions_task ON task_completions(task_id);`);

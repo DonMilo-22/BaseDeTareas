@@ -168,3 +168,5 @@ assert(!afterDelete.data.tasks.some(task => task.id === taskId));
 console.log(`Verificación completada. Cuenta creada: ${email}`);
 
 // Versión 3: valida migraciones de activity_logs.
+
+// Versión 4: valida migraciones completas de tablas antiguas.
