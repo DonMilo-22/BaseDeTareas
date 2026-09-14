@@ -135,10 +135,11 @@ const filtered = await request(
   `/api/tasks?class_id=${encodeURIComponent(classId)}&topic=${encodeURIComponent("Tema de verificación")}`,
   { token: updatedToken }
 );
+const allTasks = await request("/api/tasks", { token: updatedToken });
 const taskWasReturned = filtered.data.tasks.some(task => String(task.id) === String(taskId));
 assert(
   taskWasReturned,
-  `La tarea creada ${taskId} no apareció con filtros. Respuesta: ${JSON.stringify(filtered.data)}`
+  `La tarea creada ${taskId} no apareció con filtros. Filtrada: ${JSON.stringify(filtered.data)}. Todas: ${JSON.stringify(allTasks.data)}`
 );
 
 await request("/api/tasks/status", {
@@ -182,3 +183,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 7: usa códigos de materia únicos en cada ejecución.
 
 // Versión 8: incluye diagnóstico del filtro de tareas.
+
+// Versión 9: compara consulta filtrada contra la consulta completa.
