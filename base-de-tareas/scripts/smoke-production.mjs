@@ -135,7 +135,11 @@ const filtered = await request(
   `/api/tasks?class_id=${encodeURIComponent(classId)}&topic=${encodeURIComponent("Tema de verificación")}`,
   { token: updatedToken }
 );
-assert(filtered.data.tasks.some(task => String(task.id) === String(taskId)));
+const taskWasReturned = filtered.data.tasks.some(task => String(task.id) === String(taskId));
+assert(
+  taskWasReturned,
+  `La tarea creada ${taskId} no apareció con filtros. Respuesta: ${JSON.stringify(filtered.data)}`
+);
 
 await request("/api/tasks/status", {
   method: "POST",
@@ -176,3 +180,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 6: normaliza tipos de ID devueltos por LibSQL.
 
 // Versión 7: usa códigos de materia únicos en cada ejecución.
+
+// Versión 8: incluye diagnóstico del filtro de tareas.
