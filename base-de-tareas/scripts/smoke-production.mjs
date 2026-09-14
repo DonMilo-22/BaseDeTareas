@@ -101,7 +101,7 @@ const createdClass = await request("/api/classes", {
   token: updatedToken,
   body: JSON.stringify({
     name: className,
-    code: "TEST-001",
+    code: `TEST-${suffix.slice(0, 8)}`,
     teacher: "Prueba automática",
     schedule: "Temporal",
     color: "#6366f1",
@@ -174,3 +174,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 5: valida IDs numéricos autoincrementales.
 
 // Versión 6: normaliza tipos de ID devueltos por LibSQL.
+
+// Versión 7: usa códigos de materia únicos en cada ejecución.
