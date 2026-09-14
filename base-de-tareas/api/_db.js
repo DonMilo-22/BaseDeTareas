@@ -41,7 +41,7 @@ export async function initDatabase() {
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS classes (
-      id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       code TEXT,
       teacher TEXT,
@@ -55,7 +55,7 @@ export async function initDatabase() {
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS tasks (
-      id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
       title TEXT NOT NULL,
       description TEXT,
@@ -71,7 +71,7 @@ export async function initDatabase() {
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS task_completions (
-      id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       completed INTEGER DEFAULT 1,

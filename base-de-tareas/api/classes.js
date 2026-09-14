@@ -93,16 +93,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "El nombre de la clase es obligatorio." });
       }
 
-      const classId = "cls_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
       const classColor = color || "#6366f1";
       const classIcon = icon || "📚";
       const topicsJson = JSON.stringify(Array.isArray(topics) && topics.length > 0 ? topics : ["Tema 1", "Tema 2", "Tema 3"]);
 
-      await db.execute({
-        sql: `INSERT INTO classes (id, name, code, teacher, schedule, color, icon, topics, created_by)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      const result = await db.execute({
+        sql: `INSERT INTO classes (name, code, teacher, schedule, color, icon, topics, created_by)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
         args: [
-          classId,
           name.trim(),
           (code || "").trim(),
           (teacher || "").trim(),
@@ -113,6 +111,7 @@ export default async function handler(req, res) {
           userAuth.id,
         ],
       });
+      const classId = Number(result.lastInsertRowid);
 
       // Log activity
       await logActivity(db, {

@@ -32,15 +32,14 @@ export default async function handler(req, res) {
 
     const taskTitle = taskRes.rows[0].title;
     const isCompleted = completed === 1 || completed === true || completed === "1";
-    const compId = `cmp_${task_id}_${userAuth.id}`;
 
     if (isCompleted) {
       // Marcar como completada
       await db.execute({
-        sql: `INSERT INTO task_completions (id, task_id, user_id, completed, completed_at)
-              VALUES (?, ?, ?, 1, ?)
+        sql: `INSERT INTO task_completions (task_id, user_id, completed, completed_at)
+              VALUES (?, ?, 1, ?)
               ON CONFLICT(task_id, user_id) DO UPDATE SET completed = 1, completed_at = ?;`,
-        args: [compId, task_id, userAuth.id, new Date().toISOString(), new Date().toISOString()],
+        args: [task_id, userAuth.id, new Date().toISOString(), new Date().toISOString()],
       });
 
       await logActivity(db, {

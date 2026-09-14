@@ -138,16 +138,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "La clase, título y fecha límite son obligatorios." });
       }
 
-      const taskId = "tsk_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
       const photosJson = JSON.stringify(Array.isArray(photos) ? photos : []);
       const nowIso = new Date().toISOString();
       const taskTopic = (topic || "Tema 1").trim();
 
-      await db.execute({
-        sql: `INSERT INTO tasks (id, class_id, title, topic, description, due_date, priority, photos, created_by, updated_by, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+      const result = await db.execute({
+        sql: `INSERT INTO tasks (class_id, title, topic, description, due_date, priority, photos, created_by, updated_by, created_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         args: [
-          taskId,
           class_id,
           title.trim(),
           taskTopic,
@@ -161,6 +159,7 @@ export default async function handler(req, res) {
           nowIso,
         ],
       });
+      const taskId = Number(result.lastInsertRowid);
 
       // Obtener nombre de la clase para el log
       const clsRes = await db.execute({ sql: "SELECT name FROM classes WHERE id = ?;", args: [class_id] });
