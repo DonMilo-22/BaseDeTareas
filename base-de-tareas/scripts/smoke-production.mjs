@@ -185,3 +185,5 @@ console.log(`Verificación completada. Cuenta creada: ${email}`);
 // Versión 8: incluye diagnóstico del filtro de tareas.
 
 // Versión 9: compara consulta filtrada contra la consulta completa.
+
+// Versión 10: valida IDs de texto para tareas y estados.
