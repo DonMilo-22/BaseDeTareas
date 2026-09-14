@@ -67,7 +67,7 @@ const registered = await request("/api/auth/register", {
   expected: 201,
 });
 assert.equal(registered.data.user.email, email);
-assert.match(String(registered.data.user.id), /^usr_/);
+assert(Number(registered.data.user.id) > 0);
 assert(registered.data.token);
 
 const login = await request("/api/auth/login", {

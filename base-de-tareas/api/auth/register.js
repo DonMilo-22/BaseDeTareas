@@ -39,19 +39,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Este correo electrónico ya está registrado." });
     }
 
-    const userId = "usr_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
     const passwordHash = await hashPassword(password);
 
     // Avatar por defecto si no se proporcionó
     const defaultAvatar = avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(normalizedName)}`;
 
-    await db.execute({
-      sql: `INSERT INTO users (id, name, email, password_hash, avatar_url) VALUES (?, ?, ?, ?, ?);`,
-      args: [userId, normalizedName, normalizedEmail, passwordHash, defaultAvatar],
+    const result = await db.execute({
+      sql: `INSERT INTO users (name, email, password_hash, avatar_url) VALUES (?, ?, ?, ?);`,
+      args: [normalizedName, normalizedEmail, passwordHash, defaultAvatar],
     });
 
     const user = {
-      id: userId,
+      id: Number(result.lastInsertRowid),
       name: normalizedName,
       email: normalizedEmail,
       avatar_url: defaultAvatar,
@@ -61,10 +60,10 @@ export default async function handler(req, res) {
 
     // Registrar actividad
     await logActivity(db, {
-      userId,
+      userId: user.id,
       actionType: "REGISTRO_USUARIO",
       targetType: "user",
-      targetId: userId,
+      targetId: user.id,
       targetTitle: user.name,
       details: "Se unió al grupo de clases de Base de Tareas.",
     });

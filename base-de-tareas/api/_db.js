@@ -30,7 +30,7 @@ export async function initDatabase() {
   // Crear tablas principales
   await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
@@ -108,13 +108,6 @@ export async function initDatabase() {
   } catch (e) {
     // La columna ya existe
   }
-
-  // Reparar cuentas creadas por versiones anteriores que no guardaban el ID.
-  await db.execute(`
-    UPDATE users
-    SET id = 'usr_' || lower(hex(randomblob(16)))
-    WHERE id IS NULL OR TRIM(id) = '';
-  `);
 
   // Crear índices para mayor velocidad
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_tasks_class ON tasks(class_id);`);
