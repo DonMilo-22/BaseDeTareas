@@ -180,7 +180,7 @@ export default async function handler(req, res) {
   // 4. ELIMINAR CLASE (DELETE)
   if (req.method === "DELETE") {
     try {
-      const { id } = req.query || req.body || {};
+      const id = req.query?.id || req.body?.id;
 
       if (!id) {
         return res.status(400).json({ error: "Se requiere el ID de la clase a eliminar." });

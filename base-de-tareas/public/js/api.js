@@ -107,6 +107,7 @@ export class ApiClient {
     if (filters.class_id && filters.class_id !== 'todas') params.append('class_id', filters.class_id);
     if (filters.status && filters.status !== 'todas') params.append('status', filters.status);
     if (filters.priority && filters.priority !== 'todas') params.append('priority', filters.priority);
+    if (filters.topic && filters.topic !== 'todos') params.append('topic', filters.topic);
     if (filters.search) params.append('search', filters.search);
 
     const query = params.toString() ? `?${params.toString()}` : '';

@@ -10,19 +10,29 @@ export default async function handler(req, res) {
 
   try {
     const { name, email, password, avatar_url } = req.body || {};
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!name || !email || !password) {
+    if (!normalizedName || !normalizedEmail || typeof password !== "string") {
       return res.status(400).json({ error: "Nombre, correo y contraseña son obligatorios." });
     }
 
-    if (password.length < 4) {
-      return res.status(400).json({ error: "La contraseña debe tener al menos 4 caracteres." });
+    if (password.length < 6) {
+      return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
+    }
+
+    if (normalizedName.length > 80 || normalizedEmail.length > 254) {
+      return res.status(400).json({ error: "El nombre o el correo exceden la longitud permitida." });
+    }
+
+    if (avatar_url && String(avatar_url).length > 1500000) {
+      return res.status(413).json({ error: "La imagen de perfil es demasiado grande." });
     }
 
     // Verificar si el correo ya existe
     const existing = await db.execute({
       sql: "SELECT id FROM users WHERE LOWER(email) = LOWER(?);",
-      args: [email.trim()],
+      args: [normalizedEmail],
     });
 
     if (existing.rows.length > 0) {
@@ -33,17 +43,17 @@ export default async function handler(req, res) {
     const passwordHash = await hashPassword(password);
 
     // Avatar por defecto si no se proporcionó
-    const defaultAvatar = avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`;
+    const defaultAvatar = avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(normalizedName)}`;
 
-    const result = await db.execute({
-      sql: `INSERT INTO users (name, email, password_hash, avatar_url) VALUES (?, ?, ?, ?);`,
-      args: [name.trim(), email.trim().toLowerCase(), passwordHash, defaultAvatar],
+    await db.execute({
+      sql: `INSERT INTO users (id, name, email, password_hash, avatar_url) VALUES (?, ?, ?, ?, ?);`,
+      args: [userId, normalizedName, normalizedEmail, passwordHash, defaultAvatar],
     });
 
     const user = {
-      id: Number(result.lastInsertRowid),
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
+      id: userId,
+      name: normalizedName,
+      email: normalizedEmail,
       avatar_url: defaultAvatar,
     };
 

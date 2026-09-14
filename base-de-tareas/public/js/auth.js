@@ -123,7 +123,7 @@ export const AuthState = {
     });
 
     document.getElementById('btn-open-switch-account')?.addEventListener('click', () => {
-      UI.openModal('modal-auth');
+      this.showGateScreen();
     });
 
     document.getElementById('btn-logout')?.addEventListener('click', () => {
@@ -145,7 +145,7 @@ export const AuthState = {
     UI.refreshIcons();
 
     document.getElementById('btn-open-login')?.addEventListener('click', () => {
-      UI.openModal('modal-auth');
+      this.showGateScreen();
     });
   },
 
@@ -175,14 +175,9 @@ export const AuthState = {
 
   logout() {
     ApiClient.setToken(null);
-    this.currentUser = null;
-    this.isAuthenticated = false;
-    this.renderLoggedOutNav();
-    if (this.onUserChanged) {
-      this.onUserChanged(null);
-    }
+    this.setUser(null);
+    UI.closeAllModals();
     UI.showToast('Sesión cerrada correctamente.', 'info');
-    UI.openModal('modal-auth');
   },
 
   openEditProfileModal() {

@@ -41,8 +41,14 @@ export default async function handler(req, res) {
     const now = new Date();
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
     const urgentTasksRes = await db.execute({
-      sql: `SELECT COUNT(*) as count FROM tasks WHERE due_date <= ?;`,
-      args: [in48h],
+      sql: `SELECT COUNT(*) as count
+            FROM tasks t
+            WHERE t.due_date >= ? AND t.due_date <= ?
+              AND (? IS NULL OR NOT EXISTS (
+                SELECT 1 FROM task_completions tc
+                WHERE tc.task_id = t.id AND tc.user_id = ? AND tc.completed = 1
+              ));`,
+      args: [now.toISOString(), in48h, currentUserId, currentUserId],
     });
     const urgentTasksCount = Number(urgentTasksRes.rows[0]?.count || 0);
 
