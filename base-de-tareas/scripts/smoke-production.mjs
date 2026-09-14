@@ -166,3 +166,5 @@ const afterDelete = await request(
 assert(!afterDelete.data.tasks.some(task => task.id === taskId));
 
 console.log(`Verificación completada. Cuenta creada: ${email}`);
+
+// Versión 3: valida migraciones de activity_logs.

@@ -42,10 +42,15 @@ export async function comparePassword(password, hash) {
   return await bcrypt.compare(password, hash);
 }
 
-export function logActivity(db, { userId, actionType, targetType, targetId, targetTitle, details }) {
-  const id = "act_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
-  return db.execute({
-    sql: `INSERT INTO activity_logs (id, user_id, action_type, target_type, target_id, target_title, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-    args: [id, userId, actionType, targetType, targetId, targetTitle, details, new Date().toISOString()],
-  });
+export async function logActivity(db, { userId, actionType, targetType, targetId, targetTitle, details }) {
+  try {
+    return await db.execute({
+      sql: `INSERT INTO activity_logs (user_id, action_type, target_type, target_id, target_title, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+      args: [userId, actionType, targetType, targetId, targetTitle, details, new Date().toISOString()],
+    });
+  } catch (error) {
+    // La acción principal no debe fallar solo porque el historial esté desactualizado.
+    console.error("No se pudo registrar la actividad:", error);
+    return null;
+  }
 }

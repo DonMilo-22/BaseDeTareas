@@ -82,7 +82,7 @@ export async function initDatabase() {
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS activity_logs (
-      id TEXT PRIMARY KEY,
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL REFERENCES users(id),
       action_type TEXT NOT NULL,
       target_type TEXT NOT NULL,
@@ -93,21 +93,29 @@ export async function initDatabase() {
     );
   `);
 
-  // Migración para activity_logs: agregar created_at si no existe
-  try {
-    await db.execute(`
-    ALTER TABLE activity_logs
-    ADD COLUMN created_at DATETIME
-  `);
+  // Compatibilidad con bases Turso creadas con versiones anteriores.
+  const activityMigrations = [
+    "ALTER TABLE activity_logs ADD COLUMN action_type TEXT",
+    "ALTER TABLE activity_logs ADD COLUMN target_type TEXT",
+    "ALTER TABLE activity_logs ADD COLUMN target_id TEXT",
+    "ALTER TABLE activity_logs ADD COLUMN target_title TEXT",
+    "ALTER TABLE activity_logs ADD COLUMN details TEXT",
+    "ALTER TABLE activity_logs ADD COLUMN created_at DATETIME",
+  ];
 
-    await db.execute(`
+  for (const statement of activityMigrations) {
+    try {
+      await db.execute(statement);
+    } catch (error) {
+      // La columna ya existe.
+    }
+  }
+
+  await db.execute(`
     UPDATE activity_logs
     SET created_at = CURRENT_TIMESTAMP
     WHERE created_at IS NULL
   `);
-  } catch (e) {
-    // La columna ya existe
-  }
 
   // Crear índices para mayor velocidad
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_tasks_class ON tasks(class_id);`);
