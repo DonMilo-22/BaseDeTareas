@@ -7,12 +7,15 @@ process.env.TURSO_DATABASE_URL = 'file::memory:';
 process.env.JWT_SECRET = 'test-secret-with-more-than-thirty-two-characters';
 process.env.APP_URL = 'http://localhost:3000';
 process.env.CRON_SECRET = 'test-cron-secret';
+process.env.EMAIL_RECIPIENT_OVERRIDE = 'pruebas@correo.com';
 
 let app;
 let db;
 let admin;
 let member;
 let groupId;
+let secondGroupId;
+let adminUserId;
 let classId;
 let taskId;
 let subtaskId;
@@ -56,8 +59,29 @@ describe('Base de Tareas v2 API', () => {
     expect(forbiddenClass.body.error.code).toBe('FORBIDDEN');
     const members = await admin.get(`/api/groups/${groupId}/members`).expect(200);
     const student = members.body.members.find(item => item.name === 'Estudiante');
+    adminUserId = members.body.members.find(item => item.name === 'Administradora').id;
     expect(student).not.toHaveProperty('email');
     await admin.patch(`/api/groups/${groupId}/members/${student.id}`).send({ role: 'manager' }).expect(200);
+    await member.patch(`/api/groups/${groupId}/members/${adminUserId}`).send({ role: 'member' }).expect(403);
+    const lastAdmin = await admin.patch(`/api/groups/${groupId}/members/${adminUserId}`).send({ role: 'member' }).expect(409);
+    expect(lastAdmin.body.error.code).toBe('LAST_ADMIN');
+  });
+
+  it('keeps classes and permissions isolated between groups', async () => {
+    const second = await member.post('/api/groups').send({
+      name: 'Grupo privado',
+      description: 'No visible para el otro grupo',
+      semester_name: 'Ago-Ene 2026',
+    }).expect(201);
+    secondGroupId = second.body.group.id;
+    await admin.get(`/api/groups/${secondGroupId}/classes`).expect(404);
+    await member.post(`/api/groups/${secondGroupId}/classes`).send({
+      name: 'Materia privada',
+      code: 'PRIV-1',
+      topics: ['Tema privado'],
+    }).expect(201);
+    const firstGroupClasses = await member.get(`/api/groups/${groupId}/classes`).expect(200);
+    expect(firstGroupClasses.body.classes.some(item => item.name === 'Materia privada')).toBe(false);
   });
 
   it('creates a class with topics and a task with subtasks', async () => {
@@ -77,6 +101,7 @@ describe('Base de Tareas v2 API', () => {
       subtasks: ['Crear routers', 'Probar conectividad'],
     }).expect(201);
     taskId = task.body.task.id;
+    expect(task.body.email_notification).toMatchObject({ attempted: 1, sent: 1, failed: 0 });
     const detail = await admin.get(`/api/groups/${groupId}/tasks/${taskId}`).expect(200);
     expect(detail.body.subtasks).toHaveLength(2);
     subtaskId = detail.body.subtasks[0].id;
@@ -122,8 +147,21 @@ describe('Base de Tareas v2 API', () => {
       sql: `UPDATE reminders SET remind_at = ? WHERE id = ?`,
       args: [new Date(Date.now() + 3 * 86400000).toISOString(), distant.body.reminder.id],
     });
+    await member.post(`/api/groups/${groupId}/tasks`).send({
+      class_id: classId,
+      topic_id: topicId,
+      title: 'Entrega urgente',
+      description: 'Debe generar recordatorio automático.',
+      due_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      is_important: true,
+      subtasks: [],
+    }).expect(201);
     const cron = await request(app).get('/api/cron/reminders').set('Authorization', 'Bearer test-cron-secret').expect(200);
     expect(cron.body.scheduled).toBe(1);
+    expect(cron.body.automatic).toMatchObject({ tasks_due_soon: 1, sent: 1 });
+    const repeated = await request(app).get('/api/cron/reminders').set('Authorization', 'Bearer test-cron-secret').expect(200);
+    expect(repeated.body.automatic.sent).toBe(0);
+    expect(repeated.body.automatic.skipped).toBeGreaterThan(0);
   });
 
   it('rejects unsafe attachment protocols', async () => {
