@@ -1,4 +1,4 @@
-import { avatar, calendarCells, dateTime, emptyState, esc, isManager, pageHead, roleLabel, taskRow } from './ui.js';
+import { activitySentence, avatar, calendarCells, dateTime, emptyState, esc, isManager, pageHead, roleLabel, taskRow } from './ui.js';
 
 export function homeView(state) {
   const data = state.dashboard;
@@ -20,7 +20,7 @@ export function homeView(state) {
       <details class="panel surface collapsible-panel" open>
         <summary class="panel-head"><h2>Actividad reciente</h2><span class="summary-actions"><button class="text-link" data-action="show-activity">Ver historial</button><span class="collapse-chevron">⌄</span></span></summary>
         <div class="activity-list">
-          ${(data?.activity || []).length ? data.activity.map(item => `<div class="activity-item">${avatar(item.user_name, 'small')}<div><p>${esc(item.summary)}</p><time>${esc(dateTime(item.created_at))}</time></div></div>`).join('') : '<p class="muted">Todavía no hay movimientos en el grupo.</p>'}
+          ${(data?.activity || []).length ? data.activity.map(item => `<div class="activity-item">${avatar(item.user_name, 'small', item.avatar_url, item.avatar_color)}<div><p>${esc(activitySentence(item))}</p><time>${esc(dateTime(item.created_at))}</time></div></div>`).join('') : '<p class="muted">Todavía no hay movimientos en el grupo.</p>'}
         </div>
       </details>
     </section>`;
@@ -52,8 +52,27 @@ export function calendarView(state) {
       <div class="calendar-head"><button class="icon-button" data-action="calendar-prev" aria-label="Mes anterior">‹</button><h2>${esc(monthName[0].toUpperCase() + monthName.slice(1))}</h2><button class="icon-button" data-action="calendar-next" aria-label="Mes siguiente">›</button></div>
       <div class="calendar-grid">
         ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(day => `<div class="calendar-weekday">${day}</div>`).join('')}
-        ${calendarCells(state.calendarDate, state.tasks)}
+        ${calendarCells(state.calendarDate, state.tasks, state.announcements)}
       </div>
+    </section>`;
+}
+
+export function announcementsView(state) {
+  return `
+    ${pageHead('Comunicación del grupo', 'Anuncios', 'Avisos, comentarios y fechas que no necesitan convertirse en tarea.', '<button class="button primary" data-action="new-announcement">＋ Nuevo anuncio</button>')}
+    <section class="announcement-list">
+      ${state.announcements.length ? state.announcements.map(item => `
+        <article class="announcement-card surface" data-announcement-id="${esc(item.id)}">
+          <header>${avatar(item.user_name, 'small', item.avatar_url, item.avatar_color)}<div><strong>${esc(item.user_name)}</strong><time>${esc(dateTime(item.created_at))}</time></div></header>
+          <p>${esc(item.body)}</p>
+          ${item.event_at ? `<div class="announcement-date"><span>□</span><div><small>Fecha del aviso</small><strong>${esc(dateTime(item.event_at, { year: 'numeric' }))}</strong></div></div>` : ''}
+          <footer>
+            ${item.reminder_id
+              ? `<span class="pill success">Correo · ${esc(dateTime(item.remind_at))}</span><button class="button ghost small" data-action="delete-announcement-reminder" data-announcement-id="${esc(item.id)}">Cancelar aviso</button>`
+              : `<button class="button secondary small" data-action="announcement-reminder" data-announcement-id="${esc(item.id)}">Recordarme por correo</button>`}
+            ${(item.user_id === state.user.id || isManager(state.group)) ? `<span class="spacer"></span><button class="button ghost small" data-action="edit-announcement" data-announcement-id="${esc(item.id)}">Editar</button><button class="button danger small" data-action="delete-announcement" data-announcement-id="${esc(item.id)}">Eliminar</button>` : ''}
+          </footer>
+        </article>`).join('') : emptyState('◇', 'Todavía no hay anuncios', 'Publica el primer aviso para mantener informado al grupo.', '<button class="button primary" data-action="new-announcement">Crear anuncio</button>')}
     </section>`;
 }
 
@@ -78,7 +97,7 @@ export function teamView(state) {
     <section class="card-grid">
       ${state.members.map(member => `
         <article class="member-card surface">
-          <div class="member-card-head">${avatar(member.name, 'large')}<div class="member-meta"><h2>${esc(member.name)}${member.id === state.user.id ? ' <span class="pill">Tú</span>' : ''}</h2><p>${Number(member.completed_tasks || 0)} tareas completadas</p></div></div>
+          <div class="member-card-head">${avatar(member.name, 'large', member.avatar_url, member.avatar_color)}<div class="member-meta"><h2>${esc(member.name)}${member.id === state.user.id ? ' <span class="pill">Tú</span>' : ''}</h2><p>${Number(member.completed_tasks || 0)} tareas completadas</p></div></div>
           <div class="setting-row"><div><strong>Permiso</strong><p>${esc(roleLabel(member.role))}</p></div>
             ${canEdit && member.id !== state.user.id ? `<div class="inline-actions"><select class="role-select" data-action="change-role" data-user-id="${esc(member.id)}"><option value="member" ${member.role === 'member' ? 'selected' : ''}>Alumno</option><option value="manager" ${member.role === 'manager' ? 'selected' : ''}>Gestor</option><option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Administrador</option></select><button class="button ghost small" data-action="remove-member" data-user-id="${esc(member.id)}" data-user-name="${esc(member.name)}">Quitar</button></div>` : `<span class="pill role">${esc(roleLabel(member.role))}</span>`}
           </div>
@@ -106,7 +125,9 @@ function settingsContent(state) {
   if (state.settingsTab === 'profile') return `
     <h2>Mi perfil</h2><p class="muted">Información personal y preferencias.</p>
     <form id="profile-form" class="stack-md">
+      <div class="profile-editor"><div id="profile-preview">${avatar(state.user.name, 'large', state.user.avatar_url, state.user.avatar_color)}</div><div><label class="button secondary small" for="avatar-file">Subir foto</label><input id="avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden><button type="button" class="button ghost small" data-action="remove-avatar">Quitar foto</button><small>La imagen se optimiza antes de guardarse.</small></div></div>
       <label>Nombre<input name="name" value="${esc(state.user.name)}" required></label>
+      <div class="form-grid"><label>Color del avatar<input name="avatar_color" type="color" value="${esc(state.user.avatar_color || '#4f46e5')}"></label><label>Color principal de la página<input name="accent_color" type="color" value="${esc(state.user.accent_color || '#4f46e5')}"></label></div>
       <label>Zona horaria<input name="timezone" value="${esc(state.user.timezone)}" required></label>
       <div class="setting-row"><div><strong>Recordatorios por correo</strong><p>Permite programar correos personales para tus tareas.</p></div><input class="toggle" name="email_notifications" type="checkbox" ${Number(state.user.email_notifications) ? 'checked' : ''}></div>
       <div class="setting-row"><div><strong>Tema</strong><p>Elige cómo se verá la aplicación.</p></div><select name="theme" class="role-select"><option value="system" ${state.user.theme === 'system' ? 'selected' : ''}>Sistema</option><option value="light" ${state.user.theme === 'light' ? 'selected' : ''}>Claro</option><option value="dark" ${state.user.theme === 'dark' ? 'selected' : ''}>Oscuro</option></select></div>
@@ -118,7 +139,8 @@ function settingsContent(state) {
     <h2>Grupo</h2><p class="muted">Configuración compartida de ${esc(state.group.name)}.</p>
     <div class="setting-row"><div><strong>Código de invitación</strong><p>Compártelo solo con integrantes del salón.</p></div><button class="button secondary" data-action="copy-code">${esc(state.group.join_code)}</button></div>
     <div class="setting-row"><div><strong>Tu permiso</strong><p>${esc(roleLabel(state.group.role))}</p></div><span class="pill role">${esc(roleLabel(state.group.role))}</span></div>
-    ${state.group.role === 'admin' ? `<form id="group-settings-form" class="stack-md"><label>Nombre<input name="name" value="${esc(state.group.name)}" required></label><label>Descripción<textarea name="description">${esc(state.group.description || '')}</textarea></label><button class="button primary">Actualizar grupo</button></form>` : ''}`;
+    ${state.group.role === 'admin' ? `<form id="group-settings-form" class="stack-md"><label>Nombre<input name="name" value="${esc(state.group.name)}" required></label><label>Descripción<textarea name="description">${esc(state.group.description || '')}</textarea></label><button class="button primary">Actualizar grupo</button></form>` : ''}
+    <div class="danger-zone"><h3>Salir del grupo</h3><p class="muted">Dejarás de ver sus materias, tareas y anuncios. Si eres el único administrador, primero deberás asignar otro.</p><button class="button danger" data-action="leave-group">Salir de este grupo</button></div>`;
 
   if (state.settingsTab === 'data') return `
     <h2>Exportar información</h2><p class="muted">Conserva una copia o añade las entregas a tu calendario.</p>
@@ -128,9 +150,9 @@ function settingsContent(state) {
 
   if (state.settingsTab === 'activity') return `
     <h2>Actividad del grupo</h2><p class="muted">Los movimientos más recientes, en orden cronológico.</p>
-    <div class="activity-list activity-full">${state.activity.length ? state.activity.map(item => `<div class="activity-item">${avatar(item.user_name || 'Sistema', 'small')}<div><p>${esc(item.summary)}</p><time>${esc(dateTime(item.created_at))}</time></div></div>`).join('') : '<p class="muted">Todavía no hay movimientos en el grupo.</p>'}</div>`;
+    <div class="activity-list activity-full">${state.activity.length ? state.activity.map(item => `<div class="activity-item">${avatar(item.user_name || 'Sistema', 'small', item.avatar_url, item.avatar_color)}<div><p>${esc(activitySentence(item))}</p><time>${esc(dateTime(item.created_at))}</time></div></div>`).join('') : '<p class="muted">Todavía no hay movimientos en el grupo.</p>'}</div>`;
 
   return `
     <h2>Papelera</h2><p class="muted">Recupera elementos eliminados por un gestor.</p>
-    <div class="task-list">${state.trash.length ? state.trash.map(item => `<div class="task-row"><span class="empty-icon" style="width:36px;height:36px;margin:0">${item.type === 'task' ? '✓' : '▤'}</span><div class="task-main"><strong>${esc(item.name)}</strong><small>${esc(item.context || (item.type === 'task' ? 'Tarea' : 'Materia'))} · ${esc(dateTime(item.deleted_at))}</small></div><button class="button secondary small" data-action="restore-item" data-type="${esc(item.type)}" data-id="${esc(item.id)}">Restaurar</button></div>`).join('') : emptyState('♲', 'La papelera está vacía', 'Los elementos eliminados aparecerán aquí.')}</div>`;
+    <div class="task-list">${state.trash.length ? state.trash.map(item => `<div class="task-row"><span class="empty-icon" style="width:36px;height:36px;margin:0">${item.type === 'task' ? '✓' : '▤'}</span><div class="task-main"><strong>${esc(item.name)}</strong><small>${esc(item.context || (item.type === 'task' ? 'Tarea' : 'Materia'))} · ${esc(dateTime(item.deleted_at))}</small></div><div class="inline-actions"><button class="button secondary small" data-action="restore-item" data-type="${esc(item.type)}" data-id="${esc(item.id)}">Restaurar</button>${item.type === 'task' ? `<button class="button danger small" data-action="purge-task" data-id="${esc(item.id)}" data-name="${esc(item.name)}">Borrar definitivamente</button>` : ''}</div></div>`).join('') : emptyState('♲', 'La papelera está vacía', 'Los elementos eliminados aparecerán aquí.')}</div>`;
 }

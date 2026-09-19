@@ -1,6 +1,6 @@
 import { api, ApiError } from './api.js';
-import { avatar, dateInput, dateTime, emptyState, esc, initials, isManager, roleLabel, taskRow, toast } from './ui.js';
-import { calendarView, classesView, homeView, settingsView, tasksView, teamView } from './views.js';
+import { avatar, dateInput, dateTime, emptyState, esc, isManager, roleLabel, taskRow, toast } from './ui.js';
+import { announcementsView, calendarView, classesView, homeView, settingsView, tasksView, teamView } from './views.js';
 
 const state = {
   user: null,
@@ -8,6 +8,7 @@ const state = {
   group: null,
   classes: [],
   tasks: [],
+  announcements: [],
   dashboard: null,
   members: [],
   activity: [],
@@ -16,6 +17,7 @@ const state = {
   settingsTab: 'profile',
   filters: { search: '', class_id: '', status: '' },
   calendarDate: new Date(),
+  avatarDraft: undefined,
 };
 
 const screens = {
@@ -30,14 +32,16 @@ function showScreen(name) {
   Object.entries(screens).forEach(([key, element]) => { element.hidden = key !== name; });
 }
 
-function applyTheme(theme = 'system') {
+function applyTheme(theme = 'system', accentColor = '#4f46e5') {
   const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.style.setProperty('--primary', accentColor || '#4f46e5');
+  document.documentElement.style.setProperty('--primary-soft', `color-mix(in srgb, ${accentColor || '#4f46e5'} 15%, var(--surface))`);
 }
 
 function currentView() {
   const requested = location.hash.replace('#', '').split('?')[0];
-  return ['home', 'tasks', 'calendar', 'classes', 'team', 'settings'].includes(requested) ? requested : 'home';
+  return ['home', 'tasks', 'announcements', 'calendar', 'classes', 'team', 'settings'].includes(requested) ? requested : 'home';
 }
 
 function setBusy(form, busy) {
@@ -66,7 +70,7 @@ async function init() {
     const data = await api.me();
     state.user = data.user;
     state.groups = data.groups;
-    applyTheme(state.user.theme);
+    applyTheme(state.user.theme, state.user.accent_color);
     if (!state.groups.length) {
       showScreen('onboarding');
       return;
@@ -98,14 +102,15 @@ function syncShell() {
   document.getElementById('current-group-role').textContent = roleLabel(state.group.role);
   document.getElementById('profile-name').textContent = state.user.name;
   document.getElementById('profile-role').textContent = roleLabel(state.group.role);
-  document.getElementById('profile-avatar').textContent = initials(state.user.name);
+  document.getElementById('profile-avatar').outerHTML = avatar(state.user.name, '', state.user.avatar_url, state.user.avatar_color).replace('class="avatar ', 'id="profile-avatar" class="avatar ');
   document.querySelectorAll('.manager-only').forEach(element => { element.hidden = !isManager(state.group); });
 }
 
 async function loadCore() {
-  const [classes, tasks] = await Promise.all([api.classes(state.group.id), api.tasks(state.group.id)]);
+  const [classes, tasks, announcements] = await Promise.all([api.classes(state.group.id), api.tasks(state.group.id), api.announcements(state.group.id)]);
   state.classes = classes.classes;
   state.tasks = tasks.tasks;
+  state.announcements = announcements.announcements;
   updatePendingBadge();
 }
 
@@ -125,8 +130,11 @@ async function navigate() {
     } else if (state.view === 'tasks') {
       await reloadTasks();
       view.innerHTML = tasksView(state);
+    } else if (state.view === 'announcements') {
+      await reloadAnnouncements();
+      view.innerHTML = announcementsView(state);
     } else if (state.view === 'calendar') {
-      await reloadTasks();
+      await Promise.all([reloadTasks(), reloadAnnouncements()]);
       view.innerHTML = calendarView(state);
     } else if (state.view === 'classes') {
       state.classes = (await api.classes(state.group.id)).classes;
@@ -165,6 +173,12 @@ function bindStaticEvents() {
   document.getElementById('group-join-form').addEventListener('submit', joinGroup);
   document.getElementById('task-form').addEventListener('submit', saveTask);
   document.getElementById('class-form').addEventListener('submit', saveClass);
+  document.getElementById('announcement-form').addEventListener('submit', saveAnnouncement);
+  document.getElementById('announcement-reminder-form').addEventListener('submit', saveAnnouncementReminder);
+  document.getElementById('announcement-form').elements.enable_reminder.addEventListener('change', event => {
+    document.getElementById('announcement-reminder-time').hidden = !event.target.checked;
+    document.getElementById('announcement-form').elements.remind_at.required = event.target.checked;
+  });
   document.getElementById('class-delete').addEventListener('click', deleteClass);
   document.getElementById('task-form').elements.class_id.addEventListener('change', updateTopicOptions);
   document.getElementById('onboarding-logout').addEventListener('click', logout);
@@ -213,7 +227,7 @@ function authSubmit(type) {
       const data = type === 'login' ? await api.login(values) : await api.register(values);
       state.user = data.user;
       state.groups = (await api.groups()).groups;
-      applyTheme(state.user.theme);
+      applyTheme(state.user.theme, state.user.accent_color);
       if (!state.groups.length) showScreen('onboarding');
       else { state.group = state.groups[0]; await enterApp(); }
       form.reset();
@@ -279,6 +293,14 @@ async function handleViewClick(event) {
   const taskElement = event.target.closest('[data-task-id]');
   if (action === 'new-task') return openTaskForm();
   if (action === 'new-class') return openClassForm();
+  if (action === 'new-announcement') return openAnnouncementForm();
+  if (action === 'edit-announcement') return openAnnouncementForm(state.announcements.find(item => item.id === event.target.closest('[data-announcement-id]').dataset.announcementId));
+  if (action === 'delete-announcement') return deleteAnnouncement(event.target.closest('[data-announcement-id]').dataset.announcementId);
+  if (action === 'announcement-reminder') return openAnnouncementReminder(event.target.closest('[data-announcement-id]').dataset.announcementId);
+  if (action === 'delete-announcement-reminder') return deleteAnnouncementReminder(event.target.closest('[data-announcement-id]').dataset.announcementId);
+  if (action === 'leave-group') return leaveGroup();
+  if (action === 'purge-task') return purgeTask(event.target.closest('[data-action]'));
+  if (action === 'remove-avatar') { state.avatarDraft = null; renderAvatarPreview(); return; }
   if (action === 'retry-view') return navigate();
   if (action === 'copy-code') return copyCode();
   if (action === 'logout') return logout();
@@ -298,9 +320,15 @@ async function handleViewClick(event) {
   const exportLink = event.target.closest('[data-export]');
   if (exportLink) { exportLink.href = api.exportUrl(state.group.id, exportLink.dataset.export); exportLink.download = ''; }
   if (taskElement && !event.target.closest('button[data-action]')) openTaskDetail(taskElement.dataset.taskId);
+  const announcementElement = event.target.closest('.calendar-task[data-announcement-id]');
+  if (announcementElement) location.hash = 'announcements';
 }
 
 async function handleViewChange(event) {
+  if (event.target.id === 'avatar-file' && event.target.files?.[0]) {
+    try { state.avatarDraft = await compressAvatar(event.target.files[0]); renderAvatarPreview(); }
+    catch (error) { handleError(error); }
+  }
   if (event.target.id === 'class-filter') { state.filters.class_id = event.target.value; await refreshTasksView(); }
   if (event.target.matches('[data-action="change-role"]')) {
     try { await api.updateRole(state.group.id, event.target.dataset.userId, event.target.value); toast('Permiso actualizado.', 'success'); state.members = (await api.members(state.group.id)).members; view.innerHTML = teamView(state); }
@@ -310,6 +338,8 @@ async function handleViewChange(event) {
 
 let searchTimer;
 function handleViewInput(event) {
+  if (event.target.name === 'avatar_color') { renderAvatarPreview(); return; }
+  if (event.target.name === 'accent_color') { applyTheme(state.user.theme, event.target.value); return; }
   if (event.target.id !== 'task-search') return;
   clearTimeout(searchTimer);
   searchTimer = setTimeout(async () => { state.filters.search = event.target.value; await refreshTasksView(); }, 250);
@@ -319,7 +349,8 @@ async function handleViewSubmit(event) {
   event.preventDefault();
   if (event.target.id === 'profile-form') {
     const form = event.target; const values = formValues(form); values.email_notifications = form.elements.email_notifications.checked;
-    try { const data = await api.updateProfile(values); state.user = data.user; applyTheme(state.user.theme); syncShell(); toast('Perfil actualizado.', 'success'); view.innerHTML = settingsView(state); }
+    values.avatar_url = state.avatarDraft === undefined ? state.user.avatar_url : state.avatarDraft;
+    try { const data = await api.updateProfile(values); state.user = data.user; state.avatarDraft = undefined; applyTheme(state.user.theme, state.user.accent_color); syncShell(); toast('Perfil actualizado.', 'success'); view.innerHTML = settingsView(state); }
     catch (error) { handleError(error); }
   }
   if (event.target.id === 'group-settings-form') {
@@ -343,6 +374,10 @@ view.addEventListener('click', async event => {
 async function refreshTasksView() {
   await reloadTasks();
   view.innerHTML = tasksView(state);
+}
+
+async function reloadAnnouncements() {
+  state.announcements = (await api.announcements(state.group.id)).announcements;
 }
 
 async function toggleTask(taskId, completed) {
@@ -523,6 +558,131 @@ async function restoreItem(button) {
     else await api.restoreClass(state.group.id, button.dataset.id);
     state.trash = (await api.trash(state.group.id)).items; view.innerHTML = settingsView(state); toast('Elemento restaurado.', 'success');
   } catch (error) { handleError(error); }
+}
+
+async function purgeTask(button) {
+  if (!confirm(`¿Borrar "${button.dataset.name}" definitivamente? Esta acción no se puede deshacer.`)) return;
+  try {
+    await api.purgeTask(state.group.id, button.dataset.id);
+    state.trash = (await api.trash(state.group.id)).items;
+    view.innerHTML = settingsView(state);
+    toast('La tarea fue eliminada definitivamente.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+function openAnnouncementForm(item) {
+  const form = document.getElementById('announcement-form');
+  form.reset();
+  form.elements.id.value = item?.id || '';
+  form.elements.body.value = item?.body || '';
+  form.elements.event_at.value = item?.event_at ? dateInput(item.event_at) : '';
+  form.elements.enable_reminder.checked = false;
+  document.getElementById('announcement-form-title').textContent = item ? 'Editar anuncio' : 'Nuevo anuncio';
+  document.getElementById('announcement-reminder-toggle').hidden = Boolean(item);
+  document.getElementById('announcement-reminder-time').hidden = true;
+  form.elements.remind_at.required = false;
+  form.elements.remind_at.value = dateInput(new Date(Date.now() + 60 * 60 * 1000));
+  document.getElementById('announcement-dialog').showModal();
+}
+
+async function saveAnnouncement(event) {
+  event.preventDefault();
+  const form = event.currentTarget; setBusy(form, true);
+  try {
+    const values = formValues(form); const id = values.id; delete values.id; delete values.enable_reminder;
+    values.event_at = values.event_at ? new Date(values.event_at).toISOString() : null;
+    if (!id && form.elements.enable_reminder.checked) values.remind_at = new Date(form.elements.remind_at.value).toISOString();
+    else delete values.remind_at;
+    if (id) await api.updateAnnouncement(state.group.id, id, values);
+    else await api.createAnnouncement(state.group.id, values);
+    form.closest('dialog').close();
+    await reloadAnnouncements();
+    view.innerHTML = announcementsView(state);
+    toast(id ? 'Anuncio actualizado.' : 'Anuncio publicado.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+function openAnnouncementReminder(announcementId) {
+  const announcement = state.announcements.find(item => item.id === announcementId);
+  const form = document.getElementById('announcement-reminder-form');
+  form.reset(); form.elements.announcement_id.value = announcementId;
+  const minimum = new Date(Date.now() + 2 * 60 * 1000);
+  const suggested = announcement?.event_at
+    ? new Date(Math.min(new Date(announcement.event_at).getTime() - 60 * 60 * 1000, Date.now() + 60 * 60 * 1000))
+    : new Date(Date.now() + 60 * 60 * 1000);
+  form.elements.remind_at.min = dateInput(minimum);
+  form.elements.remind_at.value = dateInput(suggested > minimum ? suggested : minimum);
+  document.getElementById('announcement-reminder-dialog').showModal();
+}
+
+async function saveAnnouncementReminder(event) {
+  event.preventDefault();
+  const form = event.currentTarget; setBusy(form, true);
+  try {
+    await api.addAnnouncementReminder(state.group.id, form.elements.announcement_id.value, new Date(form.elements.remind_at.value).toISOString());
+    form.closest('dialog').close(); await reloadAnnouncements(); view.innerHTML = announcementsView(state);
+    toast('Recordatorio programado.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function deleteAnnouncementReminder(announcementId) {
+  try {
+    await api.deleteAnnouncementReminder(state.group.id, announcementId);
+    await reloadAnnouncements(); view.innerHTML = announcementsView(state);
+    toast('Recordatorio cancelado.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+async function deleteAnnouncement(announcementId) {
+  if (!confirm('¿Eliminar este anuncio para todo el grupo?')) return;
+  try {
+    await api.deleteAnnouncement(state.group.id, announcementId);
+    await reloadAnnouncements(); view.innerHTML = announcementsView(state);
+    toast('Anuncio eliminado.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+async function leaveGroup() {
+  if (!confirm(`¿Salir de "${state.group.name}"? Dejarás de ver toda su información.`)) return;
+  try {
+    await api.leaveGroup(state.group.id, state.user.id);
+    state.groups = (await api.groups()).groups;
+    state.group = state.groups.find(group => !group.archived_at) || null;
+    if (!state.group) showScreen('onboarding');
+    else await enterApp();
+    toast('Saliste del grupo.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+function renderAvatarPreview() {
+  const container = document.getElementById('profile-preview');
+  if (!container) return;
+  const form = document.getElementById('profile-form');
+  container.innerHTML = avatar(state.user.name, 'large', state.avatarDraft === undefined ? state.user.avatar_url : state.avatarDraft, form?.elements.avatar_color.value || state.user.avatar_color);
+}
+
+function compressAvatar(file) {
+  if (!file.type.match(/^image\/(?:png|jpeg|webp)$/)) return Promise.reject(new Error('Elige una imagen PNG, JPG o WebP.'));
+  if (file.size > 8 * 1024 * 1024) return Promise.reject(new Error('La imagen es demasiado grande. El máximo es 8 MB.'));
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () => reject(new Error('La imagen no es válida.'));
+      image.onload = () => {
+        const size = 256; const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+        const context = canvas.getContext('2d');
+        const crop = Math.min(image.width, image.height); const x = (image.width - crop) / 2; const y = (image.height - crop) / 2;
+        context.drawImage(image, x, y, crop, crop, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', .82));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 async function deleteClass() {
