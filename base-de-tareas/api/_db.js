@@ -20,6 +20,66 @@ export const db = createClient({
   authToken,
 });
 
+export function generateId(prefix) {
+  return `${prefix}_${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36)}`;
+}
+
+export async function getTableColumns(tableName) {
+  if (!/^[a-z_][a-z0-9_]*$/i.test(tableName)) {
+    throw new Error("Nombre de tabla inválido");
+  }
+
+  const result = await db.execute(`PRAGMA table_info(${tableName});`);
+  return result.rows;
+}
+
+export async function tableHasColumn(tableName, columnName) {
+  const columns = await getTableColumns(tableName);
+  return columns.some((column) => column.name === columnName);
+}
+
+// Las primeras versiones de la aplicación exigían que cada clase perteneciera
+// a un grupo. Conservamos ese esquema si ya existe en Turso y creamos un grupo
+// principal transparente para la interfaz simplificada actual.
+export async function ensureLegacyGroupForUser(userId) {
+  if (!(await tableHasColumn("classes", "group_id"))) return null;
+  const compatibleUserId = String(userId);
+
+  const membership = await db.execute({
+    sql: `SELECT group_id FROM group_members
+          WHERE CAST(user_id AS TEXT) = CAST(? AS TEXT)
+          ORDER BY joined_at ASC LIMIT 1;`,
+    args: [compatibleUserId],
+  });
+  if (membership.rows[0]?.group_id) return membership.rows[0].group_id;
+
+  const ownedGroup = await db.execute({
+    sql: `SELECT id FROM groups
+          WHERE CAST(created_by AS TEXT) = CAST(? AS TEXT)
+          ORDER BY created_at ASC LIMIT 1;`,
+    args: [compatibleUserId],
+  });
+
+  let groupId = ownedGroup.rows[0]?.id;
+  if (!groupId) {
+    groupId = generateId("grp");
+    const joinCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+    await db.execute({
+      sql: `INSERT INTO groups (id, name, description, join_code, created_by)
+            VALUES (?, ?, ?, ?, ?);`,
+      args: [groupId, "Base de Tareas", "Grupo principal", joinCode, compatibleUserId],
+    });
+  }
+
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO group_members (group_id, user_id, role)
+          VALUES (?, ?, 'admin');`,
+    args: [groupId, compatibleUserId],
+  });
+
+  return groupId;
+}
+
 let isInitialized = false;
 
 export async function initDatabase() {
@@ -169,6 +229,44 @@ export async function initDatabase() {
     } catch (error) {
       // La columna ya existe.
     }
+  }
+
+  if (await tableHasColumn("tasks", "due_at")) {
+    await db.execute(`
+      UPDATE tasks
+      SET due_date = due_at
+      WHERE due_date IS NULL AND due_at IS NOT NULL;
+    `);
+  }
+
+  if (await tableHasColumn("activity_logs", "action")) {
+    await db.execute(`
+      UPDATE activity_logs
+      SET action_type = COALESCE(action_type, action),
+          target_type = COALESCE(target_type, entity_type),
+          target_id = COALESCE(target_id, entity_id),
+          details = COALESCE(details, summary)
+      WHERE action_type IS NULL OR target_type IS NULL OR details IS NULL;
+    `);
+  }
+
+  // En SQLite una PRIMARY KEY de tipo TEXT puede contener NULL. Una versión
+  // anterior registraba usuarios usando rowid, así que alineamos ambos valores
+  // sin borrar cuentas ni invalidar las sesiones que ya fueron emitidas.
+  const usersWithoutId = await db.execute(
+    "SELECT rowid FROM users WHERE id IS NULL OR TRIM(CAST(id AS TEXT)) = '';"
+  );
+  for (const user of usersWithoutId.rows) {
+    let compatibleId = String(user.rowid);
+    const collision = await db.execute({
+      sql: "SELECT 1 FROM users WHERE CAST(id AS TEXT) = ? LIMIT 1;",
+      args: [compatibleId],
+    });
+    if (collision.rows.length > 0) compatibleId = generateId("usr");
+    await db.execute({
+      sql: "UPDATE users SET id = ? WHERE rowid = ?;",
+      args: [compatibleId, user.rowid],
+    });
   }
 
   // Crear índices para mayor velocidad
