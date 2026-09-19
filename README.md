@@ -14,6 +14,7 @@ Diseñado con una estética **Glassmorphism (UI/UX Pro Max)**, compatibilidad to
 - **Lista de Cumplimiento por Tarea**: Visualiza con exactitud qué compañeros han completado una tarea y quiénes la tienen pendiente, junto a una barra de porcentaje total de entrega grupal.
 - **Progreso Personal vs. Grupal**: Cada estudiante tiene su propia cuenta y foto de perfil. Puede marcar sus tareas como completadas con 1 solo clic y consultar sus métricas personales y las de la clase.
 - **Registro de Actividad en Vivo (Historial de Cambios)**: Feed cronológico con foto del autor que registra quién creó una tarea, quién editó una descripción o quién completó sus deberes.
+- **Notificaciones por Correo**: Envía un aviso al crear una tarea y un recordatorio diario a quienes aún la tengan pendiente cuando falten menos de 24 horas.
 - **Directorio de Compañeros**: Directorio de la clase con estadísticas de avance de cada alumno y opción de cambio rápido de cuenta para pruebas.
 - **Diseño Glassmorphism Pro Max**: Paneles translúcidos con `backdrop-filter: blur()`, orbes dinámicos de fondo, micro-animaciones, badges luminosos y 100% responsivo para móviles y escritorio.
 
@@ -73,6 +74,11 @@ Abre tu navegador en [http://localhost:3000](http://localhost:3000). La aplicaci
    TURSO_DATABASE_URL=libsql://base-de-tareas-db-tuusuario.turso.io
    TURSO_AUTH_TOKEN=tu_token_aqui
    JWT_SECRET=tu_clave_secreta_super_segura
+   RESEND_API_KEY=re_tu_clave_de_resend
+   RESEND_FROM_EMAIL=Base de Tareas <onboarding@resend.dev>
+   EMAIL_RECIPIENT_OVERRIDE=tu_correo_autorizado_en_resend
+   CRON_SECRET=una_clave_larga_y_aleatoria
+   APP_URL=https://basedetareas.vercel.app
    PORT=3000
    ```
 
@@ -93,12 +99,21 @@ Durante el despliegue o en el Dashboard de Vercel (**Settings > Environment Vari
 - `TURSO_DATABASE_URL`
 - `TURSO_AUTH_TOKEN`
 - `JWT_SECRET`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL` (durante las pruebas: `Base de Tareas <onboarding@resend.dev>`)
+- `EMAIL_RECIPIENT_OVERRIDE` (durante las pruebas, usa el correo de tu cuenta de Resend)
+- `CRON_SECRET`
+- `APP_URL` (por ejemplo, `https://basedetareas.vercel.app`)
 
 ### Opción 2: Mediante GitHub + Vercel Dashboard
 1. Sube este proyecto a tu repositorio de GitHub.
 2. En [vercel.com](https://vercel.com), haz clic en **"Add New Project"** e importa el repositorio.
-3. En la sección **Environment Variables**, añade `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` y `JWT_SECRET`.
+3. En la sección **Environment Variables**, añade las variables de Turso, autenticación y correo indicadas arriba.
 4. Haz clic en **Deploy**. ¡Listo!
+
+Vercel ejecuta `/api/cron/reminders` una vez al día a las 14:00 UTC (aproximadamente las 8:00 a. m. en Campeche). El endpoint exige `CRON_SECRET` y registra cada envío en Turso para no mandar el mismo recordatorio dos veces.
+
+Mientras uses `onboarding@resend.dev`, Resend solo permite enviar al correo asociado con tu cuenta. `EMAIL_RECIPIENT_OVERRIDE` redirige una única copia de prueba a esa dirección. Cuando verifiques un dominio propio, cambia `RESEND_FROM_EMAIL` y elimina `EMAIL_RECIPIENT_OVERRIDE` para enviar a cada usuario real.
 
 ---
 

@@ -1,5 +1,6 @@
 import { db, initDatabase } from "./_db.js";
 import { verifyToken, logActivity } from "./_auth.js";
+import { sendTaskCreatedNotifications } from "./_email.js";
 
 export default async function handler(req, res) {
   await initDatabase();
@@ -171,7 +172,7 @@ export default async function handler(req, res) {
         ],
       });
 
-      // Obtener nombre de la clase para el log
+      // Obtener nombre de la clase para el log y los correos
       const clsRes = await db.execute({ sql: "SELECT name FROM classes WHERE id = ?;", args: [storedClassId] });
       const className = clsRes.rows[0]?.name || "Clase";
 
@@ -190,9 +191,34 @@ export default async function handler(req, res) {
         details: detailsMsg,
       });
 
+      // El correo nunca debe impedir que la tarea se cree correctamente.
+      let emailNotification = { attempted: 0, sent: 0, skipped: 0, failed: 0 };
+      try {
+        const usersRes = await db.execute(
+          "SELECT id, name, email FROM users WHERE email IS NOT NULL AND TRIM(email) <> '';"
+        );
+        emailNotification = await sendTaskCreatedNotifications({
+          task: {
+            id: taskId,
+            title: title.trim(),
+            topic: taskTopic,
+            description: (description || "").trim(),
+            due_date,
+            priority: priority || "media",
+            class_name: className,
+          },
+          recipients: usersRes.rows,
+          creatorName: userAuth.name,
+        });
+      } catch (emailError) {
+        console.error("La tarea se creó, pero el aviso por correo falló:", emailError);
+        emailNotification.failed++;
+      }
+
       return res.status(201).json({
         message: "¡Tarea creada exitosamente!",
         taskId,
+        emailNotification,
       });
     } catch (error) {
       console.error("Error en tasks POST:", error);

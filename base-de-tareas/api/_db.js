@@ -93,6 +93,20 @@ export async function initDatabase() {
     );
   `);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS email_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      notification_type TEXT NOT NULL,
+      recipient_email TEXT NOT NULL,
+      provider_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      sent_at DATETIME,
+      UNIQUE(task_id, user_id, notification_type)
+    );
+  `);
+
   // Compatibilidad con bases Turso creadas con versiones anteriores.
   const activityMigrations = [
     "ALTER TABLE activity_logs ADD COLUMN action_type TEXT",
@@ -162,6 +176,7 @@ export async function initDatabase() {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_completions_task ON task_completions(task_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_completions_user ON task_completions(user_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_logs(created_at DESC);`);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_email_notifications_task ON email_notifications(task_id);`);
 
   // Migración segura para Temas en clases y tareas
   try {

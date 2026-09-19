@@ -13,6 +13,7 @@ import taskStatusHandler from "./api/tasks/status.js";
 import activityHandler from "./api/activity.js";
 import statsHandler from "./api/stats.js";
 import usersHandler from "./api/users.js";
+import remindersHandler from "./api/cron/reminders.js";
 import { initDatabase } from "./api/_db.js";
 
 dotenv.config();
@@ -52,6 +53,7 @@ app.all("/api/tasks", wrap(tasksHandler));
 app.all("/api/activity", wrap(activityHandler));
 app.all("/api/stats", wrap(statsHandler));
 app.all("/api/users", wrap(usersHandler));
+app.all("/api/cron/reminders", wrap(remindersHandler));
 
 // SPA fallback para servir index.html
 app.get("*", (req, res) => {
