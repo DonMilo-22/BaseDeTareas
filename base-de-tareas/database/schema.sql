@@ -27,6 +27,19 @@ CREATE TABLE IF NOT EXISTS users (
   deleted_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS auth_codes (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL COLLATE NOCASE,
+  purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'password_reset')),
+  code_hash TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  resend_available_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (email, purpose)
+);
+
 CREATE TABLE IF NOT EXISTS groups (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL CHECK (length(name) BETWEEN 2 AND 100),
@@ -210,6 +223,7 @@ CREATE TABLE IF NOT EXISTS announcement_reminders (
 );
 
 CREATE INDEX IF NOT EXISTS idx_members_user ON group_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_codes_expiry ON auth_codes(expires_at);
 CREATE INDEX IF NOT EXISTS idx_semesters_group ON semesters(group_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_classes_group ON classes(group_id, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_topics_class ON class_topics(class_id, position);
@@ -234,3 +248,6 @@ VALUES (2, 'email_notifications');
 
 INSERT OR IGNORE INTO schema_migrations (version, name)
 VALUES (3, 'announcements_and_profile_customization');
+
+INSERT OR IGNORE INTO schema_migrations (version, name)
+VALUES (4, 'email_verification_and_password_reset');

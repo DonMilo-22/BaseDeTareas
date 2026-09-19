@@ -52,6 +52,31 @@ async function sendEmail({ to, subject, text, html, idempotencyKey, scheduledAt 
   return data.id;
 }
 
+export async function sendAuthenticationCode({ to, name, code, purpose, requestId }) {
+  const [recipient] = resolveEmailRecipients([{ id: 'auth', name, email: to }]);
+  if (!recipient) throw new AppError(400, 'El correo no es válido.', 'INVALID_EMAIL');
+  const isRegistration = purpose === 'registration';
+  const title = isRegistration ? 'Confirma tu correo' : 'Restablece tu contraseña';
+  const action = isRegistration
+    ? 'Usa este código para terminar de crear tu cuenta.'
+    : 'Usa este código para elegir una contraseña nueva.';
+  return sendEmail({
+    to: recipient.email,
+    subject: `${code} es tu código de Base de Tareas`,
+    idempotencyKey: `auth-code-${requestId}`,
+    text: `Hola ${name || 'estudiante'}. ${action} Tu código es ${code}. Caduca en 10 minutos. Si no solicitaste esto, ignora el mensaje.`,
+    html: `<div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:auto;color:#172033">
+      <p style="color:#667085">Base de Tareas</p>
+      <h1 style="font-size:24px">${title}</h1>
+      <p>Hola, ${escapeHtml(name || 'estudiante')}. ${action}</p>
+      <div style="margin:28px 0;padding:20px;text-align:center;border:1px solid #e4e7ec;border-radius:14px;background:#f7f8fc">
+        <span style="font-size:34px;font-weight:700;letter-spacing:10px;color:#4f46e5">${code}</span>
+      </div>
+      <p style="color:#667085">El código caduca en 10 minutos. Si no solicitaste este cambio, puedes ignorar el mensaje.</p>
+    </div>`,
+  });
+}
+
 function taskCard(task) {
   const taskUrl = `${config.appUrl}/?group=${encodeURIComponent(task.group_id)}&task=${encodeURIComponent(task.id)}`;
   return {

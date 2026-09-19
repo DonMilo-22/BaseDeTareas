@@ -32,6 +32,10 @@ const groupPath = (groupId, suffix = '') => `/api/groups/${encodeURIComponent(gr
 
 export const api = {
   register: data => request('/api/auth/register', json('POST', data)),
+  verifyRegistration: data => request('/api/auth/register/verify', json('POST', data)),
+  resendRegistrationCode: email => request('/api/auth/register/resend', json('POST', { email })),
+  forgotPassword: email => request('/api/auth/password/forgot', json('POST', { email })),
+  resetPassword: data => request('/api/auth/password/reset', json('POST', data)),
   login: data => request('/api/auth/login', json('POST', data)),
   logout: () => request('/api/auth/logout', { method: 'POST' }),
   me: () => request('/api/auth/me'),

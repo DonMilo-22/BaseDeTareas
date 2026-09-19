@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+async function verifyRegistrationEmail(page) {
+  await expect(page.getByRole('heading', { name: 'Confirma que eres tú' })).toBeVisible();
+  await expect(page.locator('#register-code-form input[name="code"]')).toHaveValue(/^\d{6}$/);
+  await page.getByRole('button', { name: 'Verificar y crear cuenta' }).click();
+}
+
 test('flujo principal de escritorio', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Validación exclusiva de escritorio');
   const suffix = Date.now();
@@ -11,9 +17,10 @@ test('flujo principal de escritorio', async ({ page }, testInfo) => {
   await expect(page.getByRole('heading', { name: 'Continúa donde te quedaste' })).toBeVisible();
   await page.getByRole('tab', { name: 'Crear cuenta' }).click();
   await page.locator('#register-form input[name="name"]').fill('Prueba E2E');
-  await page.locator('#register-form input[name="email"]').fill(`e2e-${suffix}@example.com`);
+  await page.locator('#register-form input[name="email"]').fill(`e2e-${suffix}@mail.test`);
   await page.locator('#register-form input[name="password"]').fill('Prueba-Segura-123');
   await page.getByRole('button', { name: 'Crear cuenta' }).last().click();
+  await verifyRegistrationEmail(page);
 
   await expect(page.getByRole('heading', { name: '¿Cómo vas a usar Base de Tareas?' })).toBeVisible();
   await page.getByRole('button', { name: /Crear un grupo/ }).click();
@@ -60,9 +67,10 @@ test('la experiencia móvil permite recorrer y operar todas las vistas', async (
   await assertNoOverflow();
   await page.getByRole('tab', { name: 'Crear cuenta' }).click();
   await page.locator('#register-form input[name="name"]').fill('Prueba Móvil');
-  await page.locator('#register-form input[name="email"]').fill(`mobile-${suffix}@example.com`);
+  await page.locator('#register-form input[name="email"]').fill(`mobile-${suffix}@mail.test`);
   await page.locator('#register-form input[name="password"]').fill('Prueba-Segura-123');
   await page.getByRole('button', { name: 'Crear cuenta' }).last().click();
+  await verifyRegistrationEmail(page);
 
   await page.getByRole('button', { name: /Crear un grupo/ }).click();
   await expect(page.locator('#group-create-dialog')).toBeVisible();

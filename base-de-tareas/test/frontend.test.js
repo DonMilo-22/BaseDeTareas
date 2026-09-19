@@ -81,9 +81,14 @@ describe('interfaz v2', () => {
     document.querySelector('[data-auth-tab="register"]').click();
     const register = document.getElementById('register-form');
     register.querySelector('[name="name"]').value = 'Interfaz Prueba';
-    register.querySelector('[name="email"]').value = `frontend-${Date.now()}@example.com`;
+    register.querySelector('[name="email"]').value = `frontend-${Date.now()}@mail.test`;
     register.querySelector('[name="password"]').value = 'Contrasena-Segura-123';
     register.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+
+    await waitFor(() => !document.getElementById('register-code-form').hidden);
+    const codeForm = document.getElementById('register-code-form');
+    expect(codeForm.querySelector('[name="code"]').value).toHaveLength(6);
+    codeForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
 
     await waitFor(() => !document.getElementById('onboarding-screen').hidden);
     document.querySelector('[data-open-dialog="group-create-dialog"]').click();
