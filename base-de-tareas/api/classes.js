@@ -1,4 +1,10 @@
-import { db, initDatabase } from "./_db.js";
+import {
+  db,
+  ensureLegacyGroupForUser,
+  generateId,
+  initDatabase,
+  tableHasColumn,
+} from "./_db.js";
 import { verifyToken, logActivity } from "./_auth.js";
 
 export default async function handler(req, res) {
@@ -97,22 +103,47 @@ export default async function handler(req, res) {
       const classIcon = icon || "📚";
       const topicsJson = JSON.stringify(Array.isArray(topics) && topics.length > 0 ? topics : ["Tema 1", "Tema 2", "Tema 3"]);
 
-      const result = await db.execute({
-        sql: `INSERT INTO classes (name, code, teacher, schedule, color, icon, topics, created_by)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-              RETURNING id;`,
-        args: [
-          name.trim(),
-          (code || "").trim(),
-          (teacher || "").trim(),
-          (schedule || "").trim(),
-          classColor,
-          classIcon,
-          topicsJson,
-          userAuth.id,
-        ],
-      });
-      const classId = result.rows[0]?.id ?? Number(result.lastInsertRowid);
+      const usesLegacyGroups = await tableHasColumn("classes", "group_id");
+      let classId;
+
+      if (usesLegacyGroups) {
+        const groupId = await ensureLegacyGroupForUser(userAuth.id);
+        classId = generateId("cls");
+        await db.execute({
+          sql: `INSERT INTO classes
+                (id, group_id, name, code, teacher, schedule, color, icon, topics, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          args: [
+            classId,
+            groupId,
+            name.trim(),
+            (code || "").trim(),
+            (teacher || "").trim(),
+            (schedule || "").trim(),
+            classColor,
+            classIcon,
+            topicsJson,
+            String(userAuth.id),
+          ],
+        });
+      } else {
+        const result = await db.execute({
+          sql: `INSERT INTO classes (name, code, teacher, schedule, color, icon, topics, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING id;`,
+          args: [
+            name.trim(),
+            (code || "").trim(),
+            (teacher || "").trim(),
+            (schedule || "").trim(),
+            classColor,
+            classIcon,
+            topicsJson,
+            userAuth.id,
+          ],
+        });
+        classId = result.rows[0]?.id ?? Number(result.lastInsertRowid);
+      }
 
       // Log activity
       await logActivity(db, {
