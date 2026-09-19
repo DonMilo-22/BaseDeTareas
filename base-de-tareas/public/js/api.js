@@ -1,157 +1,76 @@
-// ==========================================================================
-// BASE DE TAREAS - CLIENTE DE API FETCH CON TOKEN JWT
-// ==========================================================================
-
-const API_BASE = '/api';
-
-export class ApiClient {
-  static getToken() {
-    return localStorage.getItem('bdt_token');
-  }
-
-  static setToken(token) {
-    if (token) {
-      localStorage.setItem('bdt_token', token);
-    } else {
-      localStorage.removeItem('bdt_token');
-    }
-  }
-
-  static async request(endpoint, options = {}) {
-    const url = `${API_BASE}${endpoint}`;
-    const token = this.getToken();
-
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.error || `Error ${response.status}: ${response.statusText}`);
-      }
-
-      return data;
-    } catch (err) {
-      console.error(`Error en llamada API (${endpoint}):`, err);
-      throw err;
-    }
-  }
-
-  // --- AUTENTICACIÓN ---
-  static login(email, password) {
-    return this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-  }
-
-  static register(name, email, password, avatar_url) {
-    return this.request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ name, email, password, avatar_url }),
-    });
-  }
-
-  static getMe() {
-    return this.request('/auth/me', { method: 'GET' });
-  }
-
-  static updateProfile(name, avatar_url) {
-    return this.request('/auth/me', {
-      method: 'PUT',
-      body: JSON.stringify({ name, avatar_url }),
-    });
-  }
-
-  // --- CLASES / MATERIAS ---
-  static getClasses() {
-    return this.request('/classes', { method: 'GET' });
-  }
-
-  static createClass(data) {
-    return this.request('/classes', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  static updateClass(data) {
-    return this.request('/classes', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  static deleteClass(id) {
-    return this.request('/classes', {
-      method: 'DELETE',
-      body: JSON.stringify({ id }),
-    });
-  }
-
-  // --- TAREAS ---
-  static getTasks(filters = {}) {
-    const params = new URLSearchParams();
-    if (filters.class_id && filters.class_id !== 'todas') params.append('class_id', filters.class_id);
-    if (filters.status && filters.status !== 'todas') params.append('status', filters.status);
-    if (filters.priority && filters.priority !== 'todas') params.append('priority', filters.priority);
-    if (filters.topic && filters.topic !== 'todos') params.append('topic', filters.topic);
-    if (filters.search) params.append('search', filters.search);
-
-    const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request(`/tasks${query}`, { method: 'GET' });
-  }
-
-  static createTask(data) {
-    return this.request('/tasks', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  static updateTask(data) {
-    return this.request('/tasks', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  static deleteTask(id) {
-    return this.request('/tasks', {
-      method: 'DELETE',
-      body: JSON.stringify({ id }),
-    });
-  }
-
-  static toggleTaskStatus(taskId, completed) {
-    return this.request('/tasks/status', {
-      method: 'POST',
-      body: JSON.stringify({ task_id: taskId, completed }),
-    });
-  }
-
-  // --- ACTIVIDAD Y ESTADÍSTICAS ---
-  static getActivity(limit = 40) {
-    return this.request(`/activity?limit=${limit}`, { method: 'GET' });
-  }
-
-  static getStats() {
-    return this.request('/stats', { method: 'GET' });
-  }
-
-  static getUsers() {
-    return this.request('/users', { method: 'GET' });
+export class ApiError extends Error {
+  constructor(message, status, code, details) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.details = details;
   }
 }
+
+async function request(path, options = {}) {
+  const response = await fetch(path, {
+    credentials: 'same-origin',
+    ...options,
+    headers: {
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  if (response.status === 204) return null;
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    if (!response.ok) throw new ApiError('La respuesta del servidor no fue válida.', response.status, 'INVALID_RESPONSE');
+    return response;
+  }
+  const data = await response.json();
+  if (!response.ok) throw new ApiError(data.error?.message || 'No se pudo completar la operación.', response.status, data.error?.code, data.error?.details);
+  return data;
+}
+
+const json = (method, body) => ({ method, body: JSON.stringify(body) });
+const groupPath = (groupId, suffix = '') => `/api/groups/${encodeURIComponent(groupId)}${suffix}`;
+
+export const api = {
+  register: data => request('/api/auth/register', json('POST', data)),
+  login: data => request('/api/auth/login', json('POST', data)),
+  logout: () => request('/api/auth/logout', { method: 'POST' }),
+  me: () => request('/api/auth/me'),
+  updateProfile: data => request('/api/auth/me', json('PATCH', data)),
+  deleteAccount: () => request('/api/auth/me', { method: 'DELETE' }),
+
+  groups: () => request('/api/groups'),
+  createGroup: data => request('/api/groups', json('POST', data)),
+  joinGroup: code => request('/api/groups/join', json('POST', { code })),
+  updateGroup: (id, data) => request(groupPath(id), json('PATCH', data)),
+  dashboard: id => request(groupPath(id, '/dashboard')),
+  members: id => request(groupPath(id, '/members')),
+  updateRole: (id, userId, role) => request(groupPath(id, `/members/${userId}`), json('PATCH', { role })),
+  removeMember: (id, userId) => request(groupPath(id, `/members/${userId}`), { method: 'DELETE' }),
+
+  classes: id => request(groupPath(id, '/classes')),
+  createClass: (id, data) => request(groupPath(id, '/classes'), json('POST', data)),
+  updateClass: (id, classId, data) => request(groupPath(id, `/classes/${classId}`), json('PATCH', data)),
+  deleteClass: (id, classId) => request(groupPath(id, `/classes/${classId}`), { method: 'DELETE' }),
+  restoreClass: (id, classId) => request(groupPath(id, `/classes/${classId}/restore`), { method: 'POST' }),
+
+  tasks: (id, filters = {}) => {
+    const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== '' && value != null));
+    return request(groupPath(id, `/tasks${params.size ? `?${params}` : ''}`));
+  },
+  task: (id, taskId) => request(groupPath(id, `/tasks/${taskId}`)),
+  createTask: (id, data) => request(groupPath(id, '/tasks'), json('POST', data)),
+  updateTask: (id, taskId, data) => request(groupPath(id, `/tasks/${taskId}`), json('PATCH', data)),
+  deleteTask: (id, taskId) => request(groupPath(id, `/tasks/${taskId}`), { method: 'DELETE' }),
+  restoreTask: (id, taskId) => request(groupPath(id, `/tasks/${taskId}/restore`), { method: 'POST' }),
+  completeTask: (id, taskId, completed) => request(groupPath(id, `/tasks/${taskId}/completion`), json('PUT', { completed })),
+  completeSubtask: (id, taskId, subtaskId, completed) => request(groupPath(id, `/tasks/${taskId}/subtasks/${subtaskId}/completion`), json('PUT', { completed })),
+  addComment: (id, taskId, body) => request(groupPath(id, `/tasks/${taskId}/comments`), json('POST', { body })),
+  addAttachment: (id, taskId, data) => request(groupPath(id, `/tasks/${taskId}/attachments`), json('POST', data)),
+  addReminder: (id, taskId, remind_at) => request(groupPath(id, `/tasks/${taskId}/reminders`), json('POST', { remind_at })),
+  deleteReminder: (id, taskId, reminderId) => request(groupPath(id, `/tasks/${taskId}/reminders/${reminderId}`), { method: 'DELETE' }),
+
+  activity: id => request(groupPath(id, '/activity')),
+  trash: id => request(groupPath(id, '/trash')),
+  semesters: id => request(groupPath(id, '/semesters')),
+  exportUrl: (id, format) => groupPath(id, `/export?format=${format}`),
+};

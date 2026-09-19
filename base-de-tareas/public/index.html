@@ -1,919 +1,200 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Base de Tareas | Recordatorios y Gestión Escolar Colaborativa</title>
-
-  <!-- Meta SEO -->
-  <meta name="description"
-    content="Base de Tareas es la plataforma colaborativa en español para gestionar clases, temas, tareas escolares, fechas de entrega, fotos de referencia y el progreso compartido entre compañeros con diseño Glassmorphism.">
-  <meta name="keywords"
-    content="tareas, clases, temas, recordatorios escolares, colaborativo, base de datos turso, vercel, glassmorphism">
-  <meta name="theme-color" content="#0f172a">
-
-  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fc">
+  <meta name="description" content="Organiza las tareas de tu grupo sin perder de vista lo importante.">
+  <title>Base de Tareas</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-    rel="stylesheet">
-
-  <!-- Icons via Lucide Icons (CDN) -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Estilos CSS -->
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/responsive.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
 </head>
+<body>
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
 
-<body class="glass-theme">
+  <section id="loading-screen" class="center-screen">
+    <div class="brand-mark">B</div>
+    <div class="loader" role="status"><span class="sr-only">Cargando</span></div>
+  </section>
 
-  <!-- Fondo dinámico con orbes luminosos Glassmorphism -->
-  <div class="glass-bg-canvas" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-    <div class="orb orb-4"></div>
-    <div class="glass-noise-overlay"></div>
-  </div>
-
-  <!-- ======================================================= -->
-  <!-- PANTALLA DE BIENVENIDA / BLOQUEO DE AUTENTICACIÓN (GATE) -->
-  <!-- ======================================================= -->
-  <div id="auth-gate-screen" class="auth-gate-wrapper">
-    <div class="auth-gate-container">
-      <!-- Hero Cabecera -->
-      <div class="auth-gate-hero text-center">
-        <div class="brand-icon-wrapper auth-hero-logo">
-          <i data-lucide="sparkles" class="brand-sparkle"></i>
-          <span class="brand-emoji">📚</span>
-        </div>
-        <h1 class="auth-hero-title"> Base de Tareas</h1>
-        <p class="auth-hero-tagline">Tu plataforma escolar colaborativa, organizada por <strong>Materias y
-            Temas</strong> con sincronización en tiempo real.</p>
-
-        <div class="auth-features-pills">
-          <span class="feature-pill"><i data-lucide="layers"></i> Organizado por Temas</span>
-          <span class="feature-pill"><i data-lucide="image"></i> Fotos de Referencia</span>
-          <span class="feature-pill"><i data-lucide="users-check"></i> Progreso Compartido</span>
-          <span class="feature-pill"><i data-lucide="sparkles"></i> Glassmorphism Pro</span>
-        </div>
+  <section id="auth-screen" class="auth-layout" hidden>
+    <div class="auth-intro">
+      <a class="brand brand-light" href="/" aria-label="Base de Tareas">
+        <span class="brand-mark">B</span><span>Base de Tareas</span>
+      </a>
+      <div class="auth-copy">
+        <span class="eyebrow">Tu semestre, en orden</span>
+        <h1>Lo importante, sin todo el ruido.</h1>
+        <p>Organiza entregas, coordina a tu grupo y recibe recordatorios cuando realmente los necesitas.</p>
       </div>
+      <div class="auth-preview" aria-hidden="true">
+        <span class="preview-dot"></span>
+        <div><small>Próxima entrega</small><strong>Proyecto de redes</strong></div>
+        <time>Mañana</time>
+      </div>
+    </div>
 
-      <!-- Tarjeta Glassmorphic de Autenticación -->
-      <div class="auth-gate-card glass-card">
-        <div class="auth-card-header text-center">
-          <h2 class="modal-title" id="gate-auth-title">Acceso a la Plataforma</h2>
-          <p class="modal-subtitle">Inicia sesión o regístrate para acceder al tablero de tareas y clases</p>
+    <div class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab active" data-auth-tab="login" role="tab">Iniciar sesión</button>
+          <button type="button" class="auth-tab" data-auth-tab="register" role="tab">Crear cuenta</button>
         </div>
 
-        <!-- Selector de Pestañas Login / Registro -->
-        <div class="auth-tabs-toggle">
-          <button class="auth-tab active" id="gate-tab-login">Iniciar Sesión</button>
-          <button class="auth-tab" id="gate-tab-register">Crear Cuenta</button>
-        </div>
-
-        <!-- Formulario Login Gate -->
-        <form id="gate-form-login" class="auth-form active">
-          <div class="form-group">
-            <label for="gate-login-email" class="form-label">Correo Electrónico</label>
-            <input type="email" id="gate-login-email" class="glass-input" placeholder="tu@estudiante.com" required>
-          </div>
-          <div class="form-group">
-            <label for="gate-login-password" class="form-label">Contraseña</label>
-            <input type="password" id="gate-login-password" class="glass-input" placeholder="••••••••" required>
-          </div>
-          <button type="submit" class="btn btn-primary btn-glow btn-block mt-4" id="btn-gate-submit-login">
-            <i data-lucide="log-in"></i>
-            <span>Ingresar al Tablero</span>
-          </button>
+        <form id="login-form" class="stack-lg">
+          <div><span class="eyebrow">Bienvenido de vuelta</span><h2>Continúa donde te quedaste</h2></div>
+          <label>Correo electrónico<input name="email" type="email" autocomplete="email" required></label>
+          <label>Contraseña<input name="password" type="password" autocomplete="current-password" required></label>
+          <button class="button primary full" type="submit">Entrar</button>
         </form>
 
-        <!-- Formulario Registro Gate con Subida de Foto -->
-        <form id="gate-form-register" class="auth-form">
-          <div class="form-group">
-            <label for="gate-reg-name" class="form-label">Nombre Completo <span class="text-danger">*</span></label>
-            <input type="text" id="gate-reg-name" class="glass-input" placeholder="Ej: Valentina Morales" required>
-          </div>
-          <div class="form-group">
-            <label for="gate-reg-email" class="form-label">Correo Electrónico <span class="text-danger">*</span></label>
-            <input type="email" id="gate-reg-email" class="glass-input" placeholder="valentina@estudiante.com" required>
-          </div>
-          <div class="form-group">
-            <label for="gate-reg-password" class="form-label">Contraseña <span class="text-danger">*</span></label>
-            <input type="password" id="gate-reg-password" class="glass-input" placeholder="Al menos 4 caracteres"
-              required>
-          </div>
-
-          <!-- Selector y Subidor de Foto de Perfil -->
-          <div class="form-group">
-            <label class="form-label">Foto de Perfil</label>
-            <div class="avatar-upload-field glass-card">
-              <div class="avatar-upload-preview-row">
-                <img id="gate-reg-avatar-preview" src="https://api.dicebear.com/7.x/bottts/svg?seed=estudiante"
-                  class="avatar-preview-sm" alt="Foto de perfil">
-                <div class="avatar-upload-actions">
-                  <label for="gate-reg-avatar-file" class="btn btn-glass btn-sm">
-                    <i data-lucide="upload"></i>
-                    <span>Subir Foto</span>
-                  </label>
-                  <input type="file" id="gate-reg-avatar-file" accept="image/*" class="hidden-input">
-                  <span class="upload-hint">Formatos: JPG, PNG, WEBP</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-primary btn-glow btn-block mt-4" id="btn-gate-submit-register">
-            <i data-lucide="user-plus"></i>
-            <span>Crear mi Cuenta y Entrar</span>
-          </button>
+        <form id="register-form" class="stack-lg" hidden>
+          <div><span class="eyebrow">Primera vez por aquí</span><h2>Crea tu cuenta</h2></div>
+          <label>Nombre completo<input name="name" type="text" autocomplete="name" minlength="2" maxlength="80" required></label>
+          <label>Correo electrónico<input name="email" type="email" autocomplete="email" required></label>
+          <label>Contraseña<input name="password" type="password" autocomplete="new-password" minlength="8" required><small>Mínimo 8 caracteres.</small></label>
+          <button class="button primary full" type="submit">Crear cuenta</button>
+          <p class="fine-print">Los permisos de administrador se obtienen al crear un grupo o cuando otro administrador te asciende.</p>
         </form>
       </div>
     </div>
+  </section>
+
+  <section id="onboarding-screen" class="center-screen onboarding" hidden>
+    <a class="brand" href="/"><span class="brand-mark">B</span><span>Base de Tareas</span></a>
+    <div class="onboarding-card surface">
+      <span class="eyebrow">Empecemos</span>
+      <h1>¿Cómo vas a usar Base de Tareas?</h1>
+      <p class="muted">Crea el espacio de tu salón o entra con el código que te compartieron.</p>
+      <div class="choice-grid">
+        <button type="button" class="choice-card" data-open-dialog="group-create-dialog">
+          <span class="choice-icon">＋</span><strong>Crear un grupo</strong><small>Serás administrador y podrás organizar al equipo.</small>
+        </button>
+        <button type="button" class="choice-card" data-open-dialog="group-join-dialog">
+          <span class="choice-icon">→</span><strong>Unirme a un grupo</strong><small>Utiliza el código de invitación de tu salón.</small>
+        </button>
+      </div>
+      <button type="button" class="button ghost" id="onboarding-logout">Cerrar sesión</button>
+    </div>
+  </section>
+
+  <div id="app-shell" class="app-shell" hidden>
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-head">
+        <a class="brand" href="#home"><span class="brand-mark">B</span><span class="brand-name">Base de Tareas</span></a>
+        <button type="button" id="sidebar-toggle" class="icon-button desktop-only" title="Contraer menú" aria-label="Contraer menú">‹</button>
+      </div>
+
+      <nav class="main-nav" aria-label="Navegación principal">
+        <a href="#home" data-view="home" class="nav-item active"><span class="nav-icon">⌂</span><span>Inicio</span></a>
+        <a href="#tasks" data-view="tasks" class="nav-item"><span class="nav-icon">✓</span><span>Tareas</span><b id="pending-badge" class="nav-badge">0</b></a>
+        <a href="#calendar" data-view="calendar" class="nav-item"><span class="nav-icon">□</span><span>Calendario</span></a>
+        <a href="#classes" data-view="classes" class="nav-item"><span class="nav-icon">▤</span><span>Materias</span></a>
+        <div class="nav-separator"></div>
+        <a href="#team" data-view="team" class="nav-item"><span class="nav-icon">◎</span><span>Equipo</span></a>
+        <a href="#settings" data-view="settings" class="nav-item"><span class="nav-icon">⚙</span><span>Ajustes</span></a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <button type="button" id="profile-button" class="profile-chip">
+          <span id="profile-avatar" class="avatar">U</span>
+          <span class="profile-copy"><strong id="profile-name">Usuario</strong><small id="profile-role">Alumno</small></span>
+          <span>···</span>
+        </button>
+      </div>
+    </aside>
+
+    <button type="button" id="mobile-backdrop" class="mobile-backdrop" aria-label="Cerrar menú"></button>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button type="button" id="mobile-menu" class="icon-button mobile-only" aria-label="Abrir menú">☰</button>
+        <button type="button" id="group-switcher" class="group-switcher">
+          <span id="current-group-name">Mi grupo</span><small id="current-group-role">Alumno</small><span>⌄</span>
+        </button>
+        <div class="topbar-actions">
+          <button type="button" id="global-search" class="search-trigger"><span>⌕</span><span class="search-label">Buscar tareas</span><kbd>⌘ K</kbd></button>
+          <button type="button" id="quick-add" class="button primary manager-only">＋ <span>Nueva tarea</span></button>
+        </div>
+      </header>
+
+      <div id="view" class="view" tabindex="-1"></div>
+    </main>
+
+    <nav class="mobile-nav" aria-label="Navegación móvil">
+      <a href="#home" data-view="home" class="active"><span>⌂</span><small>Inicio</small></a>
+      <a href="#tasks" data-view="tasks"><span>✓</span><small>Tareas</small></a>
+      <button type="button" id="mobile-add" class="mobile-add manager-only" aria-label="Nueva tarea">＋</button>
+      <a href="#calendar" data-view="calendar"><span>□</span><small>Agenda</small></a>
+      <a href="#settings" data-view="settings"><span>⚙</span><small>Ajustes</small></a>
+    </nav>
   </div>
 
-  <!-- ======================================================= -->
-  <!-- APLICACIÓN PRINCIPAL (SOLO VISIBLE CON SESIÓN INICIADA) -->
-        <!-- ======================================================= -->
-        <div id="app" class="app-layout" style="display: none;">
-
-          <!-- BARRA DE NAVEGACIÓN SUPERIOR -->
-          <header class="app-navbar glass-card">
-            <div class="navbar-left">
-              <div class="brand-logo" id="btn-home">
-                <div class="brand-icon-wrapper">
-                  <i data-lucide="sparkles" class="brand-sparkle"></i>
-                  <span class="brand-emoji">📚</span>
-                </div>
-                <div class="brand-text">
-                  <h1 class="brand-title">Base de Tareas</h1>
-                  <span class="brand-subtitle">Gestión Escolar Colaborativa</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Barra de Búsqueda Rápida -->
-            <div class="navbar-center">
-              <div class="search-bar glass-input-wrap">
-                <i data-lucide="search" class="search-icon"></i>
-                <input type="text" id="global-search-input" placeholder="Buscar tareas, temas, apuntes..."
-                  aria-label="Buscar tareas">
-                <span class="search-shortcut" title="Buscar">⌘K</span>
-              </div>
-            </div>
-
-            <!-- Navegación y Perfil de Usuario -->
-            <div class="navbar-right">
-              <!-- Botones de Acción Rápida -->
-              <button id="btn-new-task" class="btn btn-primary btn-glow" title="Crear nueva tarea">
-                <i data-lucide="plus-circle"></i>
-                <span>Nueva Tarea</span>
-              </button>
-
-              <button id="btn-new-class" class="btn btn-glass" title="Crear nueva materia">
-                <i data-lucide="book-open"></i>
-                <span>Nueva Clase</span>
-              </button>
-
-              <!-- Selector de Compañeros / Perfil con Dropdown Corregido -->
-              <div class="user-profile-menu" id="user-menu-container">
-                <!-- Renderizado dinámico con JS -->
-              </div>
-            </div>
-          </header>
-
-          <!-- NAVEGACIÓN POR PESTAÑAS (TABS) -->
-          <nav class="app-tabs-nav glass-card" aria-label="Navegación principal">
-            <button class="tab-btn active" data-tab="tab-tasks" id="nav-tab-tasks">
-              <i data-lucide="layout-grid"></i>
-              <span>Tablero de Tareas</span>
-              <span class="badge-counter" id="badge-total-tasks">0</span>
-            </button>
-
-            <button class="tab-btn" data-tab="tab-classes" id="nav-tab-classes">
-              <i data-lucide="graduation-cap"></i>
-              <span>Materias y Temas</span>
-              <span class="badge-counter" id="badge-total-classes">0</span>
-            </button>
-
-            <button class="tab-btn" data-tab="tab-activity" id="nav-tab-activity">
-              <i data-lucide="activity"></i>
-              <span>Registro de Actividad</span>
-              <span class="badge-pulse-dot" title="En vivo"></span>
-            </button>
-
-            <button class="tab-btn" data-tab="tab-classmates" id="nav-tab-classmates">
-              <i data-lucide="users"></i>
-              <span>Compañeros</span>
-              <span class="badge-counter" id="badge-total-students">0</span>
-            </button>
-          </nav>
-
-          <!-- CONTENIDO PRINCIPAL -->
-          <main class="main-content-container">
-
-            <!-- ============================================== -->
-            <!-- PESTAÑA 1: TABLERO DE TAREAS Y TEMAS -->
-            <!-- ============================================== -->
-            <section id="tab-tasks" class="tab-pane active">
-
-              <!-- DASHBOARD DE ESTADÍSTICAS Y MÉTRICAS GLASS -->
-              <div class="stats-grid">
-                <!-- Card 1: Mis Tareas Completadas -->
-                <div class="stat-card glass-card">
-                  <div class="stat-icon-box stat-primary">
-                    <i data-lucide="check-circle-2"></i>
-                  </div>
-                  <div class="stat-info">
-                    <span class="stat-label">Mis Tareas Realizadas</span>
-                    <div class="stat-numbers">
-                      <span class="stat-value" id="stat-my-completed">0</span>
-                      <span class="stat-total" id="stat-total-count">/ 0 tareas</span>
-                    </div>
-                  </div>
-                  <div class="stat-progress-ring">
-                    <span class="stat-percent-text" id="stat-my-percent">0%</span>
-                  </div>
-                </div>
-
-                <!-- Card 2: Progreso Personal -->
-                <div class="stat-card glass-card">
-                  <div class="stat-icon-box stat-success">
-                    <i data-lucide="trending-up"></i>
-                  </div>
-                  <div class="stat-info">
-                    <span class="stat-label">Mi Progreso Personal</span>
-                    <span class="stat-value" id="stat-status-phrase">Al día</span>
-                    <div class="progress-bar-wrap">
-                      <div class="progress-bar-fill fill-gradient-success" id="stat-my-bar" style="width: 0%;"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Card 3: Tareas Urgentes -->
-                <div class="stat-card glass-card">
-                  <div class="stat-icon-box stat-danger">
-                    <i data-lucide="clock-alert"></i>
-                  </div>
-                  <div class="stat-info">
-                    <span class="stat-label">Próximas a Vencer (48h)</span>
-                    <span class="stat-value" id="stat-urgent-count">0</span>
-                    <span class="stat-subtext" id="stat-urgent-subtext">Tareas prioritarias</span>
-                  </div>
-                </div>
-
-                <!-- Card 4: Progreso Grupal de la Clase -->
-                <div class="stat-card glass-card">
-                  <div class="stat-icon-box stat-warning">
-                    <i data-lucide="users-round"></i>
-                  </div>
-                  <div class="stat-info">
-                    <span class="stat-label">Promedio del Grupo</span>
-                    <div class="stat-numbers">
-                      <span class="stat-value" id="stat-group-percent">0%</span>
-                      <span class="stat-subtext">completado grupal</span>
-                    </div>
-                    <div class="progress-bar-wrap">
-                      <div class="progress-bar-fill fill-gradient-warning" id="stat-group-bar" style="width: 0%;"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- BARRA DE FILTROS Y CONTROLES POR MATERIA Y TEMA -->
-              <div class="filters-panel glass-card">
-                <!-- Filtro de Materias (Pills Horizontales) -->
-                <div class="classes-pills-bar" id="class-filter-pills" role="tablist">
-                  <button class="class-pill active" data-class-id="todas">
-                    <span class="pill-icon">✨</span>
-                    <span class="pill-name">Todas las materias</span>
-                  </button>
-                  <!-- Inyectado dinámicamente con JS -->
-                </div>
-
-                <!-- Subfiltros: Tema, Estado, Prioridad y Vista -->
-                <div class="subfilters-bar">
-                  <!-- Filtro de Tema / Unidad -->
-                  <div class="filter-group" id="topic-filter-group">
-                    <span class="filter-label">Tema:</span>
-                    <select id="topic-filter" class="glass-select" aria-label="Filtrar por tema">
-                      <option value="todos">Todos los temas</option>
-                    </select>
-                  </div>
-
-                  <!-- Filtro de Estado Personal -->
-                  <div class="filter-group">
-                    <span class="filter-label">Mi estado:</span>
-                    <div class="segmented-control" id="status-filter">
-                      <button class="seg-btn active" data-status="todas">Todas</button>
-                      <button class="seg-btn" data-status="pendientes">⏳ Pendientes</button>
-                      <button class="seg-btn" data-status="completadas">✅ Completadas</button>
-                    </div>
-                  </div>
-
-                  <!-- Filtro de Prioridad -->
-                  <div class="filter-group">
-                    <span class="filter-label">Prioridad:</span>
-                    <select id="priority-filter" class="glass-select" aria-label="Filtrar por prioridad">
-                      <option value="todas">Todas las prioridades</option>
-                      <option value="urgente">🔴 Urgente</option>
-                      <option value="alta">🟠 Alta</option>
-                      <option value="media">🔵 Media</option>
-                      <option value="baja">🟢 Baja</option>
-                    </select>
-                  </div>
-
-                  <!-- Selector de Vista (Cuadrícula / Lista) -->
-                  <div class="view-toggle-wrap">
-                    <button class="icon-btn active" id="btn-view-grid" title="Vista de cuadrícula">
-                      <i data-lucide="layout-grid"></i>
-                    </button>
-                    <button class="icon-btn" id="btn-view-list" title="Vista de lista">
-                      <i data-lucide="list"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- CONTENEDOR DE TAREAS ORGANIZADAS -->
-              <div class="tasks-container" id="tasks-container">
-                <div class="loading-spinner-wrap">
-                  <div class="spinner-glass"></div>
-                  <p>Cargando tareas y recordatorios...</p>
-                </div>
-              </div>
-
-            </section>
-
-            <!-- ============================================== -->
-            <!-- PESTAÑA 2: MATERIAS Y TEMAS -->
-            <!-- ============================================== -->
-            <section id="tab-classes" class="tab-pane">
-              <div class="section-header-row">
-                <div>
-                  <h2 class="section-title">Materias y Unidades Temáticas</h2>
-                  <p class="section-description">Administra tus asignaturas, organiza sus temas o unidades y consulta el
-                    avance de entregas.</p>
-                </div>
-                <button class="btn btn-primary btn-glow" id="btn-new-class-2">
-                  <i data-lucide="plus-circle"></i>
-                  <span>Añadir Materia</span>
-                </button>
-              </div>
-
-              <div class="classes-grid" id="classes-container">
-                <!-- Renderizado dinámico de tarjetas de clases con sus temas -->
-              </div>
-            </section>
-
-            <!-- ============================================== -->
-            <!-- PESTAÑA 3: REGISTRO DE ACTIVIDAD (HISTORIAL) -->
-            <!-- ============================================== -->
-            <section id="tab-activity" class="tab-pane">
-              <div class="section-header-row">
-                <div>
-                  <h2 class="section-title">Historial y Registro de Actividad</h2>
-                  <p class="section-description">Entérate de las últimas tareas creadas, ediciones de descripciones,
-                    fotos subidas y quién ha completado sus deberes.</p>
-                </div>
-                <button class="btn btn-glass" id="btn-refresh-activity" title="Actualizar">
-                  <i data-lucide="refresh-cw"></i>
-                  <span>Actualizar</span>
-                </button>
-              </div>
-
-              <div class="activity-timeline-card glass-card">
-                <div class="activity-list" id="activity-feed-container">
-                  <!-- Renderizado dinámico de items de actividad -->
-                </div>
-              </div>
-            </section>
-
-            <!-- ============================================== -->
-            <!-- PESTAÑA 4: COMPAÑEROS DE CLASE -->
-            <!-- ============================================== -->
-            <section id="tab-classmates" class="tab-pane">
-              <div class="section-header-row">
-                <div>
-                  <h2 class="section-title">Directorio de Compañeros de Clase</h2>
-                  <p class="section-description">Cada estudiante tiene su propio perfil, foto y progreso individual
-                    compartido.</p>
-                </div>
-                <div class="demo-account-notice glass-card">
-                  <i data-lucide="info"></i>
-                  <span>Puedes cambiar de cuenta al instante haciendo clic en <strong>"Cambiar a esta cuenta"</strong>
-                    para ver el sistema desde la perspectiva de cualquier compañero.</span>
-                </div>
-              </div>
-
-              <div class="classmates-grid" id="classmates-container">
-                <!-- Renderizado dinámico de perfiles de compañeros -->
-              </div>
-            </section>
-
-          </main>
-
-          <!-- PIE DE PÁGINA -->
-          <footer class="app-footer glass-card">
-            <div class="footer-content">
-              <div class="footer-left">
-                <span class="footer-brand">Base de Tareas 🚀</span>
-                <span class="footer-badge">Diseño Glassmorphism Pro Max</span>
-              </div>
-              <div class="footer-center">
-                <span>Base de datos en la nube con <strong>Turso LibSQL</strong> & Despliegue en
-                  <strong>Vercel</strong></span>
-              </div>
-              <div class="footer-right">
-                <span id="system-time-display">2026</span>
-              </div>
-            </div>
-          </footer>
-
-        </div> <!-- /app -->
-
-        <!-- ============================================== -->
-        <!-- MODALES DE LA APLICACIÓN -->
-        <!-- ============================================== -->
-
-        <!-- 1. MODAL DETALLE DE TAREA (FOTOS, COMPAÑEROS, TEMA, EDITAR) -->
-        <div id="modal-task-detail" class="modal-overlay" aria-hidden="true">
-          <div class="modal-dialog glass-modal modal-lg">
-            <div class="modal-header">
-              <div class="modal-header-tags-row">
-                <div id="detail-class-badge"></div>
-                <span class="detail-topic-pill" id="detail-topic-badge">📌 Tema 1</span>
-              </div>
-              <div class="modal-header-actions">
-                <button class="icon-btn" id="btn-detail-edit" title="Editar tarea">
-                  <i data-lucide="pencil"></i>
-                </button>
-                <button class="icon-btn text-danger" id="btn-detail-delete" title="Eliminar tarea">
-                  <i data-lucide="trash-2"></i>
-                </button>
-                <button class="icon-btn modal-close-btn" data-modal="modal-task-detail" title="Cerrar">
-                  <i data-lucide="x"></i>
-                </button>
-              </div>
-            </div>
-
-            <div class="modal-body">
-              <!-- Título y Estado de Completado Personal -->
-              <div class="detail-main-header">
-                <div class="detail-title-wrap">
-                  <h2 class="detail-title" id="detail-task-title">Título de la Tarea</h2>
-                  <div class="detail-meta-row">
-                    <span class="priority-badge" id="detail-priority-badge">🔴 Urgente</span>
-                    <span class="due-badge" id="detail-due-badge">⏳ Vence el Viernes</span>
-                  </div>
-                </div>
-
-                <!-- Botón de Completado Personal -->
-                <div class="detail-status-toggle">
-                  <button id="btn-detail-toggle-status" class="btn btn-status-toggle">
-                    <i data-lucide="circle"></i>
-                    <span>Marcar como Completada por mí</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Descripción Completa -->
-              <div class="detail-section">
-                <h3 class="detail-section-heading">
-                  <i data-lucide="file-text"></i>
-                  <span>Descripción e Instrucciones</span>
-                </h3>
-                <div class="detail-description-box glass-card" id="detail-description-text">
-                  No hay descripción detallada para esta tarea.
-                </div>
-              </div>
-
-              <!-- Galería de Fotos de Referencia -->
-              <div class="detail-section" id="detail-photos-section">
-                <h3 class="detail-section-heading">
-                  <i data-lucide="image"></i>
-                  <span>Fotos y Referencias Visuales</span>
-                  <span class="badge-counter" id="detail-photos-count">0</span>
-                </h3>
-                <div class="photos-gallery-grid" id="detail-photos-gallery">
-                  <!-- Miniaturas de imágenes -->
-                </div>
-              </div>
-
-              <!-- LISTA DE CUMPLIMIENTO DE COMPAÑEROS -->
-              <div class="detail-section">
-                <div class="detail-completion-header">
-                  <div>
-                    <h3 class="detail-section-heading">
-                      <i data-lucide="users-check"></i>
-                      <span>Cumplimiento del Grupo</span>
-                    </h3>
-                    <p class="detail-subtext" id="detail-completion-summary">3 de 4 compañeros han terminado esta tarea
-                    </p>
-                  </div>
-                  <span class="completion-percent-pill" id="detail-completion-percent">75%</span>
-                </div>
-
-                <!-- Barra de Progreso Grupal de la Tarea -->
-                <div class="progress-bar-wrap mb-4">
-                  <div class="progress-bar-fill fill-gradient-success" id="detail-completion-bar" style="width: 75%;">
-                  </div>
-                </div>
-
-                <!-- Lista Dividida: Quién la completó vs Quién la tiene pendiente -->
-                <div class="completion-lists-grid">
-                  <!-- Columna 1: Completadas -->
-                  <div class="completion-col glass-card">
-                    <div class="completion-col-title text-success">
-                      <i data-lucide="check-circle-2"></i>
-                      <span>Completada por:</span>
-                    </div>
-                    <div class="students-avatar-list" id="detail-completed-students">
-                      <!-- Tarjetas de estudiantes que terminaron -->
-                    </div>
-                  </div>
-
-                  <!-- Columna 2: Pendientes -->
-                  <div class="completion-col glass-card">
-                    <div class="completion-col-title text-warning">
-                      <i data-lucide="clock"></i>
-                      <span>Pendiente por:</span>
-                    </div>
-                    <div class="students-avatar-list" id="detail-pending-students">
-                      <!-- Tarjetas de estudiantes pendientes -->
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Metadata de Auditoría -->
-              <div class="detail-audit-footer glass-card">
-                <div class="audit-item">
-                  <i data-lucide="user-plus"></i>
-                  <span>Creada por: <strong id="detail-creator-name">Mateo Ramos</strong></span>
-                </div>
-                <div class="audit-item">
-                  <i data-lucide="history"></i>
-                  <span>Última modificación: <strong id="detail-updated-at">Hoy</strong></span>
-                </div>
-              </div>
-
-            </div> <!-- /modal-body -->
-          </div>
-        </div>
-
-        <!-- 2. MODAL CREAR / EDITAR TAREA CON TEMAS Y FOTOS -->
-        <div id="modal-task-form" class="modal-overlay" aria-hidden="true">
-          <div class="modal-dialog glass-modal modal-md">
-            <div class="modal-header">
-              <div class="modal-title-wrap">
-                <i data-lucide="check-square" class="modal-title-icon"></i>
-                <h2 class="modal-title" id="task-form-modal-title">Nueva Tarea</h2>
-              </div>
-              <button class="icon-btn modal-close-btn" data-modal="modal-task-form" title="Cerrar">
-                <i data-lucide="x"></i>
-              </button>
-            </div>
-
-            <form id="form-task" class="modal-body">
-              <input type="hidden" id="task-form-id" value="">
-
-              <!-- Selección de Materia y Tema en 2 Columnas -->
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="task-form-class" class="form-label">Materia / Clase <span
-                      class="text-danger">*</span></label>
-                  <select id="task-form-class" class="glass-input" required>
-                    <!-- Inyectado dinámicamente -->
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label for="task-form-topic" class="form-label">Tema / Unidad <span
-                      class="text-danger">*</span></label>
-                  <div class="topic-select-wrap">
-                    <select id="task-form-topic" class="glass-input">
-                      <option value="Tema 1">Tema 1</option>
-                      <option value="Tema 2">Tema 2</option>
-                      <option value="Tema 3">Tema 3</option>
-                    </select>
-                    <input type="text" id="task-form-custom-topic" class="glass-input mt-1"
-                      placeholder="O escribe un tema nuevo (ej: Unidad 4)" style="display: none;">
-                    <button type="button" class="btn-link-sm" id="btn-toggle-custom-topic">+ Añadir nuevo tema</button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Título de la Tarea -->
-              <div class="form-group">
-                <label for="task-form-title" class="form-label">Título de la Tarea <span
-                    class="text-danger">*</span></label>
-                <input type="text" id="task-form-title" class="glass-input" placeholder="Ej: Problemario de Integrales"
-                  required>
-              </div>
-
-              <!-- Fecha y Hora Límite + Prioridad en 2 Columnas -->
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="task-form-due" class="form-label">Fecha y Hora de Entrega <span
-                      class="text-danger">*</span></label>
-                  <input type="datetime-local" id="task-form-due" class="glass-input" required>
-                </div>
-
-                <div class="form-group">
-                  <label for="task-form-priority" class="form-label">Nivel de Prioridad</label>
-                  <select id="task-form-priority" class="glass-input">
-                    <option value="urgente">🔴 Urgente (Examen / Entrega Crucial)</option>
-                    <option value="alta">🟠 Alta (Proyecto / Calificación Alta)</option>
-                    <option value="media" selected>🔵 Media (Tarea Regular)</option>
-                    <option value="baja">🟢 Baja (Opcional / Lectura)</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Descripción e Instrucciones -->
-              <div class="form-group">
-                <label for="task-form-desc" class="form-label">Descripción, Instrucciones o Rúbrica</label>
-                <textarea id="task-form-desc" class="glass-input textarea-glass" rows="4"
-                  placeholder="Detalles de la entrega, ejercicios específicos, formato requerido (APA, IEEE, etc.)..."></textarea>
-              </div>
-
-              <!-- FOTOS DE REFERENCIA / ARCHIVOS -->
-              <div class="form-group">
-                <label class="form-label">
-                  <span>Fotos de Referencia / Pizarrón / Apuntes</span>
-                  <span class="label-hint">(Sube imágenes de tu dispositivo o pega enlaces)</span>
-                </label>
-
-                <!-- Input para subir archivos de imagen o pegar URL -->
-                <div class="photo-uploader-box glass-card">
-                  <div class="uploader-drop-area" id="photo-drop-zone">
-                    <i data-lucide="image-plus" class="upload-icon"></i>
-                    <p class="upload-text">Arrastra fotos aquí o <label for="task-photo-input"
-                        class="upload-browse-btn">Explorar archivos</label></p>
-                    <input type="file" id="task-photo-input" accept="image/*" multiple class="hidden-input">
-                  </div>
-
-                  <!-- Opción para pegar URL directa de imagen -->
-                  <div class="url-input-row">
-                    <input type="url" id="task-photo-url-input" class="glass-input input-sm"
-                      placeholder="O pega el enlace de una imagen (https://...)">
-                    <button type="button" class="btn btn-glass btn-sm" id="btn-add-photo-url">
-                      <i data-lucide="plus"></i>
-                      <span>Añadir</span>
-                    </button>
-                  </div>
-
-                  <!-- Vista previa de fotos adjuntas -->
-                  <div class="photos-preview-list" id="task-form-photos-preview">
-                    <!-- Miniaturas con botón eliminar -->
-                  </div>
-                </div>
-              </div>
-
-              <!-- Botones de Guardar / Cancelar -->
-              <div class="modal-footer">
-                <button type="button" class="btn btn-glass modal-close-btn"
-                  data-modal="modal-task-form">Cancelar</button>
-                <button type="submit" class="btn btn-primary btn-glow" id="btn-save-task">
-                  <i data-lucide="check"></i>
-                  <span>Guardar Tarea</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- 3. MODAL CREAR / EDITAR CLASE CON GESTIÓN DE TEMAS -->
-        <div id="modal-class-form" class="modal-overlay" aria-hidden="true">
-          <div class="modal-dialog glass-modal modal-md">
-            <div class="modal-header">
-              <div class="modal-title-wrap">
-                <i data-lucide="book-open" class="modal-title-icon"></i>
-                <h2 class="modal-title" id="class-form-modal-title">Nueva Materia</h2>
-              </div>
-              <button class="icon-btn modal-close-btn" data-modal="modal-class-form" title="Cerrar">
-                <i data-lucide="x"></i>
-              </button>
-            </div>
-
-            <form id="form-class" class="modal-body">
-              <input type="hidden" id="class-form-id" value="">
-
-              <!-- Nombre de la Materia -->
-              <div class="form-group">
-                <label for="class-form-name" class="form-label">Nombre de la Materia <span
-                    class="text-danger">*</span></label>
-                <input type="text" id="class-form-name" class="glass-input" placeholder="Ej: Cálculo Diferencial"
-                  required>
-              </div>
-
-              <div class="form-row">
-                <!-- Código de Clase -->
-                <div class="form-group">
-                  <label for="class-form-code" class="form-label">Código / Clave</label>
-                  <input type="text" id="class-form-code" class="glass-input" placeholder="Ej: MAT-201">
-                </div>
-
-                <!-- Profesor -->
-                <div class="form-group">
-                  <label for="class-form-teacher" class="form-label">Profesor / Catedrático</label>
-                  <input type="text" id="class-form-teacher" class="glass-input" placeholder="Ej: Dr. Roberto Gómez">
-                </div>
-              </div>
-
-              <!-- Horario y Aula -->
-              <div class="form-group">
-                <label for="class-form-schedule" class="form-label">Horario y Aula</label>
-                <input type="text" id="class-form-schedule" class="glass-input"
-                  placeholder="Ej: Lun y Mié 08:00 - 10:00 AM | Aula B-104">
-              </div>
-
-              <!-- GESTOR DE TEMAS / UNIDADES DE LA MATERIA -->
-              <div class="form-group">
-                <label class="form-label">
-                  <span>Temas / Unidades de esta Materia</span>
-                  <span class="label-hint">(Permite organizar las tareas en unidades)</span>
-                </label>
-                <div class="topics-builder-box glass-card">
-                  <div class="topics-tags-list" id="class-form-topics-list">
-                    <!-- Chips de Temas -->
-                  </div>
-                  <div class="add-topic-row">
-                    <input type="text" id="class-form-new-topic-input" class="glass-input input-sm"
-                      placeholder="Añadir tema (ej: Tema 4: Vectores)">
-                    <button type="button" class="btn btn-glass btn-sm" id="btn-add-class-topic">
-                      <i data-lucide="plus"></i>
-                      <span>Añadir</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Color e Icono Personalizado (Ampliado para Computación, Ciencias y Diseño) -->
-              <div class="form-group">
-                <label class="form-label">
-                  <span>Icono de la Clase</span>
-                  <span class="label-hint">(Selecciona un emoji representativo)</span>
-                </label>
-                <div class="icon-selector-grid" id="class-icon-selector">
-                  <!-- Computación & Tecnología -->
-                  <button type="button" class="icon-choice active" data-icon="💻"
-                    title="Computadora portátil">💻</button>
-                  <button type="button" class="icon-choice" data-icon="🖥️" title="Monitor / Desktop">🖥️</button>
-                  <button type="button" class="icon-choice" data-icon="⌨️" title="Teclado / Programación">⌨️</button>
-                  <button type="button" class="icon-choice" data-icon="🤖" title="Robótica / IA">🤖</button>
-                  <button type="button" class="icon-choice" data-icon="🌐" title="Desarrollo Web / Redes">🌐</button>
-                  <button type="button" class="icon-choice" data-icon="💾"
-                    title="Bases de Datos / Almacenamiento">💾</button>
-                  <button type="button" class="icon-choice" data-icon="🔐" title="Ciberseguridad">🔐</button>
-                  <button type="button" class="icon-choice" data-icon="⚙️" title="Sistemas / DevOps">⚙️</button>
-                  <button type="button" class="icon-choice" data-icon="🧠" title="Inteligencia Artificial">🧠</button>
-                  <button type="button" class="icon-choice" data-icon="📱" title="Apps Móviles">📱</button>
-                  <button type="button" class="icon-choice" data-icon="🎮" title="Desarrollo de Videojuegos">🎮</button>
-                  <button type="button" class="icon-choice" data-icon="🕹️" title="Arcade / Lógica">🕹️</button>
-                  <button type="button" class="icon-choice" data-icon="⚡" title="Electricidad / Rendimiento">⚡</button>
-                  <button type="button" class="icon-choice" data-icon="🔌" title="Hardware / Circuitos">🔌</button>
-                  <button type="button" class="icon-choice" data-icon="🚀" title="Lanzamientos / Proyectos">🚀</button>
-                  <button type="button" class="icon-choice" data-icon="🛰️"
-                    title="Telecomunicaciones / Satélites">🛰️</button>
-                  <button type="button" class="icon-choice" data-icon="📊" title="Ciencia de Datos">📊</button>
-                  <button type="button" class="icon-choice" data-icon="📈" title="Algoritmos / Estadística">📈</button>
-
-                  <!-- Ciencias, Matemáticas & Humanidades -->
-                  <button type="button" class="icon-choice" data-icon="📐" title="Matemáticas / Cálculo">📐</button>
-                  <button type="button" class="icon-choice" data-icon="⚛️" title="Física / Cuántica">⚛️</button>
-                  <button type="button" class="icon-choice" data-icon="🧪" title="Química">🧪</button>
-                  <button type="button" class="icon-choice" data-icon="🔬" title="Laboratorio / Microscopio">🔬</button>
-                  <button type="button" class="icon-choice" data-icon="🧬" title="Biología / Genética">🧬</button>
-                  <button type="button" class="icon-choice" data-icon="📚" title="Lectura / General">📚</button>
-                  <button type="button" class="icon-choice" data-icon="🏛️"
-                    title="Historia / Filosofía / Leyes">🏛️</button>
-                  <button type="button" class="icon-choice" data-icon="🎨" title="Diseño UI/UX / Artes">🎨</button>
-                  <button type="button" class="icon-choice" data-icon="🌍" title="Geografía / Idiomas">🌍</button>
-                  <button type="button" class="icon-choice" data-icon="💡" title="Innovación / Creatividad">💡</button>
-                  <button type="button" class="icon-choice" data-icon="📝" title="Redacción / Ensayos">📝</button>
-                  <button type="button" class="icon-choice" data-icon="🎬" title="Multimedia / Video">🎬</button>
-                  <button type="button" class="icon-choice" data-icon="🎵" title="Producción Musical">🎵</button>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">
-                  <span>Color Distintivo</span>
-                  <span class="label-hint">(Paleta moderna de 16 colores brillantes)</span>
-                </label>
-                <div class="color-palette-grid" id="class-color-selector">
-                  <button type="button" class="color-choice active" data-color="#6366f1" style="background: #6366f1;"
-                    title="Indigo Neón"></button>
-                  <button type="button" class="color-choice" data-color="#06b6d4" style="background: #06b6d4;"
-                    title="Cyan Tech"></button>
-                  <button type="button" class="color-choice" data-color="#0ea5e9" style="background: #0ea5e9;"
-                    title="Azul Cielo"></button>
-                  <button type="button" class="color-choice" data-color="#00f2fe" style="background: #00f2fe;"
-                    title="Cyan Eléctrico"></button>
-                  <button type="button" class="color-choice" data-color="#10b981" style="background: #10b981;"
-                    title="Verde Esmeralda"></button>
-                  <button type="button" class="color-choice" data-color="#14b8a6" style="background: #14b8a6;"
-                    title="Teal Turquesa"></button>
-                  <button type="button" class="color-choice" data-color="#84cc16" style="background: #84cc16;"
-                    title="Verde Lima"></button>
-                  <button type="button" class="color-choice" data-color="#eab308" style="background: #eab308;"
-                    title="Oro Brillante"></button>
-                  <button type="button" class="color-choice" data-color="#f59e0b" style="background: #f59e0b;"
-                    title="Ámbar"></button>
-                  <button type="button" class="color-choice" data-color="#f97316" style="background: #f97316;"
-                    title="Naranja Solar"></button>
-                  <button type="button" class="color-choice" data-color="#ff6b6b" style="background: #ff6b6b;"
-                    title="Coral Vivo"></button>
-                  <button type="button" class="color-choice" data-color="#f43f5e" style="background: #f43f5e;"
-                    title="Rosa Carmesí"></button>
-                  <button type="button" class="color-choice" data-color="#ec4899" style="background: #ec4899;"
-                    title="Hot Pink"></button>
-                  <button type="button" class="color-choice" data-color="#d946ef" style="background: #d946ef;"
-                    title="Fuchsia Neón"></button>
-                  <button type="button" class="color-choice" data-color="#8b5cf6" style="background: #8b5cf6;"
-                    title="Púrpura Mágico"></button>
-                  <button type="button" class="color-choice" data-color="#7c3aed" style="background: #7c3aed;"
-                    title="Violeta Profundo"></button>
-                </div>
-              </div>
-
-              <div class="modal-footer">
-                <button type="button" class="btn btn-glass modal-close-btn"
-                  data-modal="modal-class-form">Cancelar</button>
-                <button type="submit" class="btn btn-primary btn-glow" id="btn-save-class">
-                  <i data-lucide="check"></i>
-                  <span>Guardar Materia</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- 4. MODAL VISOR DE FOTOS EN ALTA RESOLUCIÓN (LIGHTBOX) -->
-        <div id="modal-lightbox" class="modal-overlay modal-lightbox-overlay" aria-hidden="true">
-          <button class="lightbox-close-btn modal-close-btn" data-modal="modal-lightbox" title="Cerrar imagen">
-            <i data-lucide="x"></i>
-          </button>
-          <div class="lightbox-content">
-            <img id="lightbox-img" src="" alt="Referencia fotográfica ampliada">
-          </div>
-        </div>
-
-        <!-- 5. MODAL EDITAR PERFIL DE USUARIO CON SUBIDA DE FOTO -->
-        <div id="modal-edit-profile" class="modal-overlay" aria-hidden="true">
-          <div class="modal-dialog glass-modal modal-sm">
-            <div class="modal-header">
-              <div class="modal-title-wrap">
-                <i data-lucide="user-cog" class="modal-title-icon"></i>
-                <h2 class="modal-title">Mi Perfil</h2>
-              </div>
-              <button class="icon-btn modal-close-btn" data-modal="modal-edit-profile" title="Cerrar">
-                <i data-lucide="x"></i>
-              </button>
-            </div>
-
-            <form id="form-edit-profile" class="modal-body">
-              <div class="profile-avatar-preview-wrap text-center">
-                <img id="edit-profile-avatar-preview" src="" alt="Avatar" class="avatar-circle-lg">
-                <div class="mt-2">
-                  <label for="edit-profile-avatar-file" class="btn btn-glass btn-sm">
-                    <i data-lucide="upload"></i>
-                    <span>Subir Foto desde tu Dispositivo</span>
-                  </label>
-                  <input type="file" id="edit-profile-avatar-file" accept="image/*" class="hidden-input">
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="edit-profile-name" class="form-label">Mi Nombre</label>
-                <input type="text" id="edit-profile-name" class="glass-input" required>
-              </div>
-
-              <div class="form-group">
-                <label for="edit-profile-avatar-url" class="form-label">O Enlace URL de Foto</label>
-                <input type="url" id="edit-profile-avatar-url" class="glass-input" placeholder="https://...">
-              </div>
-
-              <div class="modal-footer">
-                <button type="button" class="btn btn-glass modal-close-btn"
-                  data-modal="modal-edit-profile">Cancelar</button>
-                <button type="submit" class="btn btn-primary btn-glow">Guardar Cambios</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <!-- CONTENEDOR DE NOTIFICACIONES TOAST FLOTANTES -->
-        <div id="toast-container" class="toast-container" aria-live="polite"></div>
-
-        <!-- SCRIPTS JS -->
-        <script type="module" src="js/app.js"></script>
+  <dialog id="group-menu-dialog" class="popover-dialog"><div id="group-menu-content"></div></dialog>
+
+  <dialog id="group-create-dialog" class="modal">
+    <form method="dialog" class="modal-card" id="group-create-form">
+      <div class="modal-header"><div><span class="eyebrow">Nuevo espacio</span><h2>Crear grupo</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
+      <div class="modal-body stack-md">
+        <label>Nombre del grupo<input name="name" type="text" placeholder="Ej. ISMA-5" required maxlength="100"></label>
+        <label>Descripción <span class="optional">Opcional</span><textarea name="description" rows="3" maxlength="500" placeholder="¿Para quién es este grupo?"></textarea></label>
+        <label>Semestre actual<input name="semester_name" type="text" value="Agosto – Enero 2026" required maxlength="80"></label>
+      </div>
+      <div class="modal-footer"><button type="button" value="cancel" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary" value="default">Crear grupo</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="group-join-dialog" class="modal">
+    <form method="dialog" class="modal-card modal-small" id="group-join-form">
+      <div class="modal-header"><div><span class="eyebrow">Código de invitación</span><h2>Unirme a un grupo</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
+      <div class="modal-body"><label>Código<input name="code" type="text" class="code-input" placeholder="A1B2C3D4" autocomplete="off" required></label></div>
+      <div class="modal-footer"><button type="button" value="cancel" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary" value="default">Unirme</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="task-dialog" class="modal">
+    <form method="dialog" class="modal-card" id="task-form">
+      <div class="modal-header"><div><span class="eyebrow">Entrega</span><h2 id="task-form-title">Nueva tarea</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
+      <input type="hidden" name="id">
+      <div class="modal-body stack-md">
+        <div class="form-grid"><label>Materia<select name="class_id" required></select></label><label>Tema<select name="topic_id"><option value="">Sin tema</option></select></label></div>
+        <label>Título<input name="title" type="text" maxlength="160" required placeholder="¿Qué hay que entregar?"></label>
+        <label>Descripción <span class="optional">Opcional</span><textarea name="description" rows="4" maxlength="10000" placeholder="Instrucciones claras para el grupo"></textarea></label>
+        <div class="form-grid"><label>Fecha y hora<input name="due_at" type="datetime-local" required></label><label class="check-label"><input name="is_important" type="checkbox"><span><strong>Marcar como importante</strong><small>Se destacará sin cambiar la fecha.</small></span></label></div>
+        <label>Pasos <span class="optional">Uno por línea</span><textarea name="subtasks" rows="3" placeholder="Investigar el tema&#10;Preparar presentación"></textarea></label>
+      </div>
+      <div class="modal-footer"><button type="button" value="cancel" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary" value="default">Guardar tarea</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="class-dialog" class="modal">
+    <form method="dialog" class="modal-card" id="class-form">
+      <div class="modal-header"><div><span class="eyebrow">Organización</span><h2 id="class-form-title">Nueva materia</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
+      <input type="hidden" name="id">
+      <div class="modal-body stack-md">
+        <div class="form-grid"><label>Nombre<input name="name" type="text" required maxlength="100"></label><label>Clave <span class="optional">Opcional</span><input name="code" type="text" maxlength="40"></label></div>
+        <div class="form-grid"><label>Profesor<input name="teacher" type="text" maxlength="100"></label><label>Aula<input name="room" type="text" maxlength="80"></label></div>
+        <label>Horario<input name="schedule" type="text" maxlength="160" placeholder="Lun y mié · 10:00–12:00"></label>
+        <label>Temas o unidades <span class="optional">Uno por línea</span><textarea name="topics" rows="4" placeholder="Unidad 1&#10;Unidad 2"></textarea></label>
+        <label>Color<input name="color" type="color" value="#6366f1"></label>
+      </div>
+      <div class="modal-footer"><button type="button" id="class-delete" class="button danger" hidden>Eliminar materia</button><span class="spacer"></span><button type="button" value="cancel" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary" value="default">Guardar materia</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="task-detail-dialog" class="modal detail-dialog"><article class="modal-card" id="task-detail-content"></article></dialog>
+
+  <dialog id="search-dialog" class="search-dialog">
+    <div class="search-card">
+      <div class="search-input-row"><span>⌕</span><input id="global-search-input" type="search" placeholder="Buscar por tarea o descripción…" autocomplete="off"><button type="button" value="cancel" class="key-button dialog-close">Esc</button></div>
+      <div id="global-search-results" class="search-results"></div>
+    </div>
+  </dialog>
+
+  <script type="module" src="/js/app.js"></script>
 </body>
-
 </html>

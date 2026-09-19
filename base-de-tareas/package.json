@@ -1,31 +1,43 @@
 {
   "name": "base-de-tareas",
-  "version": "1.0.0",
-  "description": "Base de Tareas - Recordatorios colaborativos de clases y tareas escolares con Turso y Vercel",
-  "main": "server.js",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Organizador escolar colaborativo para Vercel y Turso",
   "type": "module",
-  "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
-    "test": "node --test --test-concurrency=1 test/*.test.mjs"
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
   },
-  "keywords": [
-    "tareas",
-    "clases",
-    "recordatorios",
-    "turso",
-    "vercel",
-    "glassmorphism",
-    "colaborativo"
-  ],
-  "author": "",
-  "license": "MIT",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "migrate": "node scripts/migrate.mjs",
+    "check": "npm run check:syntax && npm run test",
+    "check:syntax": "find api src public scripts -name '*.js' -o -name '*.mjs' | xargs -n1 node --check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "smoke": "node scripts/smoke-production.mjs"
+  },
   "dependencies": {
-    "@libsql/client": "^0.14.0",
+    "@libsql/client": "^0.15.15",
     "bcryptjs": "^3.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.2"
-  }
+    "cookie": "^1.0.2",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "resend": "^6.1.2",
+    "zod": "^4.1.8"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "fetch-cookie": "^3.2.0",
+    "happy-dom": "^20.14.5",
+    "html-validate": "^11.16.0",
+    "supertest": "^7.1.4",
+    "vitest": "^5.0.1"
+  },
+  "license": "MIT"
 }

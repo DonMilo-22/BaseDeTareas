@@ -1,192 +1,565 @@
-// ==========================================================================
-// BASE DE TAREAS - ORQUESTADOR PRINCIPAL DE LA APLICACIÓN
-// ==========================================================================
+import { api, ApiError } from './api.js';
+import { avatar, dateInput, dateTime, emptyState, esc, initials, isManager, roleLabel, taskRow, toast } from './ui.js';
+import { calendarView, classesView, homeView, settingsView, tasksView, teamView } from './views.js';
 
-import { ApiClient } from './api.js';
-import { UI } from './ui.js';
-import { AuthState } from './auth.js';
-import { TasksManager } from './tasks.js';
-import { TaskDetail } from './task-detail.js';
-import { ClassesManager } from './classes.js';
-import { ActivityManager } from './activity.js';
-import { ClassmatesManager } from './classmates.js';
+const state = {
+  user: null,
+  groups: [],
+  group: null,
+  classes: [],
+  tasks: [],
+  dashboard: null,
+  members: [],
+  activity: [],
+  trash: [],
+  view: 'home',
+  settingsTab: 'profile',
+  filters: { search: '', class_id: '', status: '' },
+  calendarDate: new Date(),
+};
 
-class App {
-  static async init() {
-    console.log("Iniciando Base de Tareas...");
+const screens = {
+  loading: document.getElementById('loading-screen'),
+  auth: document.getElementById('auth-screen'),
+  onboarding: document.getElementById('onboarding-screen'),
+  app: document.getElementById('app-shell'),
+};
+const view = document.getElementById('view');
 
-    // 1. Configurar Modales globales y backdrop clicks
-    this.setupModalDismissals();
+function showScreen(name) {
+  Object.entries(screens).forEach(([key, element]) => { element.hidden = key !== name; });
+}
 
-    // 2. Navegación por pestañas (Tabs)
-    this.setupTabsNavigation();
+function applyTheme(theme = 'system') {
+  const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
 
-    // 3. Inicializar Módulos
-    const refreshAll = async () => {
-      await Promise.all([
-        this.loadDashboardStats(),
-        TasksManager.loadTasks(),
-        ClassesManager.loadClasses(),
-        ActivityManager.loadActivity(),
-        ClassmatesManager.loadClassmates(),
-      ]);
-    };
+function currentView() {
+  const requested = location.hash.replace('#', '').split('?')[0];
+  return ['home', 'tasks', 'calendar', 'classes', 'team', 'settings'].includes(requested) ? requested : 'home';
+}
 
-    TaskDetail.init(() => refreshAll());
+function setBusy(form, busy) {
+  form.querySelectorAll('button, input, textarea, select').forEach(element => { element.disabled = busy; });
+}
 
-    await AuthState.init(async () => {
-      await refreshAll();
-    });
+function formValues(form) {
+  return Object.fromEntries([...form.querySelectorAll('input, textarea, select')]
+    .filter(element => element.getAttribute('name') && (element.type !== 'checkbox' || element.checked))
+    .map(element => [element.getAttribute('name'), element.value]));
+}
 
-    await Promise.all([
-      TasksManager.init(() => refreshAll()),
-      ClassesManager.init(() => refreshAll()),
-      ActivityManager.init(),
-      ClassmatesManager.init(() => refreshAll()),
-    ]);
+function handleError(error) {
+  console.error(error);
+  if (error instanceof ApiError && error.status === 401) {
+    state.user = null;
+    showScreen('auth');
+    return;
+  }
+  toast(error.message || 'Algo salió mal. Intenta de nuevo.', 'error');
+}
 
-    // 4. Cargar Estadísticas del Dashboard
-    await this.loadDashboardStats();
-
-    // 5. Escuchar evento de filtrado rápido desde materias
-    window.addEventListener('filter-class-request', (e) => {
-      const classId = e.detail;
-      this.switchTab('tab-tasks');
-      TasksManager.filters.class_id = classId;
-      TasksManager.renderClassPills();
-      TasksManager.loadTasks();
-    });
-
-    // 6. Botón Logo para ir al inicio
-    document.getElementById('btn-home')?.addEventListener('click', () => {
-      this.switchTab('tab-tasks');
-      TasksManager.filters.class_id = 'todas';
-      TasksManager.filters.status = 'todas';
-      TasksManager.renderClassPills();
-      TasksManager.loadTasks();
-    });
-
-    // 7. Actualizar año / hora en pie de página
-    const timeDisplay = document.getElementById('system-time-display');
-    if (timeDisplay) {
-      const yr = new Date().getFullYear();
-      timeDisplay.textContent = `© ${yr} Base de Tareas • Todos los derechos reservados`;
+async function init() {
+  bindStaticEvents();
+  try {
+    const data = await api.me();
+    state.user = data.user;
+    state.groups = data.groups;
+    applyTheme(state.user.theme);
+    if (!state.groups.length) {
+      showScreen('onboarding');
+      return;
     }
-
-    UI.refreshIcons();
-    console.log("Base de Tareas lista y conectada.");
-  }
-
-  // Cargar Métricas y KPIs del Dashboard Superior
-  static async loadDashboardStats() {
-    try {
-      const stats = await ApiClient.getStats();
-
-      // Card 1: Mis tareas
-      const myCompEl = document.getElementById('stat-my-completed');
-      const totalCountEl = document.getElementById('stat-total-count');
-      const percentRingEl = document.getElementById('stat-my-percent');
-      if (myCompEl) myCompEl.textContent = stats.myCompletedTasks;
-      if (totalCountEl) totalCountEl.textContent = `/ ${stats.totalTasks} tareas`;
-      if (percentRingEl) percentRingEl.textContent = `${stats.myProgressPercent}%`;
-
-      // Card 2: Mi progreso personal
-      const phraseEl = document.getElementById('stat-status-phrase');
-      const myBarEl = document.getElementById('stat-my-bar');
-      if (phraseEl) {
-        if (stats.myPendingTasks === 0 && stats.totalTasks > 0) {
-          phraseEl.textContent = '¡Todo completado! 🎉';
-        } else if (stats.myProgressPercent >= 70) {
-          phraseEl.textContent = `Vas excelente (${stats.myPendingTasks} rest.)`;
-        } else if (stats.myProgressPercent >= 40) {
-          phraseEl.textContent = `En progreso (${stats.myPendingTasks} rest.)`;
-        } else {
-          phraseEl.textContent = `${stats.myPendingTasks} pendientes`;
-        }
-      }
-      if (myBarEl) myBarEl.style.width = `${stats.myProgressPercent}%`;
-
-      // Card 3: Tareas Urgentes en 48h
-      const urgentEl = document.getElementById('stat-urgent-count');
-      const urgentSubEl = document.getElementById('stat-urgent-subtext');
-      if (urgentEl) urgentEl.textContent = stats.urgentTasksCount;
-      if (urgentSubEl) {
-        urgentSubEl.textContent = stats.urgentTasksCount === 1 ? '1 entrega prioritaria' : `${stats.urgentTasksCount} entregas prioritarias`;
-      }
-
-      // Card 4: Promedio del Grupo
-      const groupPercentEl = document.getElementById('stat-group-percent');
-      const groupBarEl = document.getElementById('stat-group-bar');
-      if (groupPercentEl) groupPercentEl.textContent = `${stats.groupProgressPercent}%`;
-      if (groupBarEl) groupBarEl.style.width = `${stats.groupProgressPercent}%`;
-    } catch (err) {
-      console.warn("Error al actualizar estadísticas del dashboard:", err);
-    }
-  }
-
-  // Navegación por pestañas (Tabs)
-  static setupTabsNavigation() {
-    const tabButtons = document.querySelectorAll('.app-tabs-nav .tab-btn');
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const targetTabId = btn.getAttribute('data-tab');
-        if (targetTabId) {
-          this.switchTab(targetTabId);
-        }
-      });
-    });
-  }
-
-  static switchTab(tabId) {
-    // Actualizar botones
-    document.querySelectorAll('.app-tabs-nav .tab-btn').forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
-    });
-
-    // Actualizar paneles
-    document.querySelectorAll('.tab-pane').forEach(pane => {
-      pane.classList.toggle('active', pane.id === tabId);
-    });
-
-    UI.refreshIcons();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  // Cierre de modales
-  static setupModalDismissals() {
-    // Botones con clase .modal-close-btn
-    document.querySelectorAll('.modal-close-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const modalId = btn.getAttribute('data-modal');
-        if (modalId) {
-          UI.closeModal(modalId);
-        } else {
-          UI.closeAllModals();
-        }
-      });
-    });
-
-    // Clic en el fondo oscuro del modal para cerrar
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          overlay.classList.remove('active');
-          overlay.setAttribute('aria-hidden', 'true');
-          document.body.style.overflow = '';
-        }
-      });
-    });
-
-    // Tecla Escape para cerrar modales
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        UI.closeAllModals();
-      }
-    });
+    const requestedGroup = new URL(location.href).searchParams.get('group');
+    const saved = localStorage.getItem('bdt_group');
+    state.group = state.groups.find(group => group.id === requestedGroup && !group.archived_at)
+      || state.groups.find(group => group.id === saved && !group.archived_at)
+      || state.groups.find(group => !group.archived_at)
+      || state.groups[0];
+    await enterApp();
+  } catch (error) {
+    if (error.status === 401) showScreen('auth');
+    else handleError(error);
   }
 }
 
-// Iniciar aplicación cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', () => {
-  App.init();
+async function enterApp() {
+  localStorage.setItem('bdt_group', state.group.id);
+  showScreen('app');
+  syncShell();
+  await loadCore();
+  await navigate();
+  openDeepLink();
+}
+
+function syncShell() {
+  document.getElementById('current-group-name').textContent = state.group.name;
+  document.getElementById('current-group-role').textContent = roleLabel(state.group.role);
+  document.getElementById('profile-name').textContent = state.user.name;
+  document.getElementById('profile-role').textContent = roleLabel(state.group.role);
+  document.getElementById('profile-avatar').textContent = initials(state.user.name);
+  document.querySelectorAll('.manager-only').forEach(element => { element.hidden = !isManager(state.group); });
+}
+
+async function loadCore() {
+  const [classes, tasks] = await Promise.all([api.classes(state.group.id), api.tasks(state.group.id)]);
+  state.classes = classes.classes;
+  state.tasks = tasks.tasks;
+  updatePendingBadge();
+}
+
+function updatePendingBadge() {
+  const pending = state.tasks.filter(task => !Number(task.completed)).length;
+  document.getElementById('pending-badge').textContent = pending;
+}
+
+async function navigate() {
+  state.view = currentView();
+  document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === state.view));
+  view.innerHTML = '<div class="skeleton"></div><div class="skeleton" style="margin-top:12px"></div>';
+  try {
+    if (state.view === 'home') {
+      state.dashboard = await api.dashboard(state.group.id);
+      view.innerHTML = homeView(state);
+    } else if (state.view === 'tasks') {
+      await reloadTasks();
+      view.innerHTML = tasksView(state);
+    } else if (state.view === 'calendar') {
+      await reloadTasks();
+      view.innerHTML = calendarView(state);
+    } else if (state.view === 'classes') {
+      state.classes = (await api.classes(state.group.id)).classes;
+      view.innerHTML = classesView(state);
+    } else if (state.view === 'team') {
+      state.members = (await api.members(state.group.id)).members;
+      view.innerHTML = teamView(state);
+    } else {
+      if (state.settingsTab === 'trash' && isManager(state.group)) state.trash = (await api.trash(state.group.id)).items;
+      if (state.settingsTab === 'activity') state.activity = (await api.activity(state.group.id)).activity;
+      view.innerHTML = settingsView(state);
+    }
+    view.focus({ preventScroll: true });
+  } catch (error) {
+    handleError(error);
+    view.innerHTML = emptyState('!', 'No pudimos cargar esta sección', 'Comprueba tu conexión e inténtalo de nuevo.', '<button class="button secondary" data-action="retry-view">Reintentar</button>');
+  }
+}
+
+async function reloadTasks() {
+  state.tasks = (await api.tasks(state.group.id, state.view === 'tasks' ? state.filters : {})).tasks;
+  updatePendingBadge();
+}
+
+function bindStaticEvents() {
+  document.querySelectorAll('[data-auth-tab]').forEach(button => button.addEventListener('click', () => {
+    const tab = button.dataset.authTab;
+    document.querySelectorAll('[data-auth-tab]').forEach(item => item.classList.toggle('active', item === button));
+    document.getElementById('login-form').hidden = tab !== 'login';
+    document.getElementById('register-form').hidden = tab !== 'register';
+  }));
+
+  document.getElementById('login-form').addEventListener('submit', authSubmit('login'));
+  document.getElementById('register-form').addEventListener('submit', authSubmit('register'));
+  document.getElementById('group-create-form').addEventListener('submit', createGroup);
+  document.getElementById('group-join-form').addEventListener('submit', joinGroup);
+  document.getElementById('task-form').addEventListener('submit', saveTask);
+  document.getElementById('class-form').addEventListener('submit', saveClass);
+  document.getElementById('class-delete').addEventListener('click', deleteClass);
+  document.getElementById('task-form').elements.class_id.addEventListener('change', updateTopicOptions);
+  document.getElementById('onboarding-logout').addEventListener('click', logout);
+
+  document.querySelectorAll('[data-open-dialog]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.openDialog).showModal()));
+  document.querySelectorAll('.dialog-close').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
+  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    screens.app.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('bdt_sidebar', screens.app.classList.contains('sidebar-collapsed') ? 'collapsed' : 'open');
+  });
+  if (localStorage.getItem('bdt_sidebar') === 'collapsed') screens.app.classList.add('sidebar-collapsed');
+  document.getElementById('mobile-menu').addEventListener('click', () => screens.app.classList.add('mobile-menu-open'));
+  document.getElementById('mobile-backdrop').addEventListener('click', closeMobileMenu);
+  document.querySelectorAll('[data-view]').forEach(link => link.addEventListener('click', closeMobileMenu));
+  addEventListener('hashchange', navigate);
+  addEventListener('popstate', openDeepLink);
+
+  document.getElementById('group-switcher').addEventListener('click', showGroupMenu);
+  document.getElementById('profile-button').addEventListener('click', () => { location.hash = 'settings'; state.settingsTab = 'profile'; });
+  document.getElementById('quick-add').addEventListener('click', () => openTaskForm());
+  document.getElementById('mobile-add').addEventListener('click', () => openTaskForm());
+  document.getElementById('global-search').addEventListener('click', openSearch);
+  document.getElementById('global-search-input').addEventListener('input', renderSearchResults);
+  addEventListener('keydown', event => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSearch(); }
+  });
+
+  view.addEventListener('click', handleViewClick);
+  view.addEventListener('change', handleViewChange);
+  view.addEventListener('input', handleViewInput);
+  view.addEventListener('submit', handleViewSubmit);
+  document.getElementById('task-detail-content').addEventListener('click', handleDetailClick);
+  document.getElementById('task-detail-content').addEventListener('submit', handleDetailSubmit);
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+function authSubmit(type) {
+  return async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setBusy(form, true);
+    try {
+      const values = formValues(form);
+      if (type === 'register') values.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Mexico_City';
+      const data = type === 'login' ? await api.login(values) : await api.register(values);
+      state.user = data.user;
+      state.groups = (await api.groups()).groups;
+      applyTheme(state.user.theme);
+      if (!state.groups.length) showScreen('onboarding');
+      else { state.group = state.groups[0]; await enterApp(); }
+      form.reset();
+    } catch (error) { handleError(error); }
+    finally { setBusy(form, false); }
+  };
+}
+
+async function createGroup(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    const data = await api.createGroup(formValues(form));
+    state.groups = (await api.groups()).groups;
+    state.group = state.groups.find(group => group.id === data.group.id);
+    form.closest('dialog').close(); form.reset();
+    await enterApp();
+    toast('Grupo creado. Ya puedes compartir el código de invitación.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function joinGroup(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    const data = await api.joinGroup(formValues(form).code);
+    state.groups = (await api.groups()).groups;
+    state.group = state.groups.find(group => group.id === data.group.id);
+    form.closest('dialog').close(); form.reset();
+    await enterApp();
+    toast(`Te uniste a ${data.group.name}.`, 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+function showGroupMenu() {
+  const dialog = document.getElementById('group-menu-dialog');
+  document.getElementById('group-menu-content').innerHTML = `
+    ${state.groups.filter(group => !group.archived_at).map(group => `<button class="menu-item ${group.id === state.group.id ? 'active' : ''}" data-group-id="${esc(group.id)}"><span><strong>${esc(group.name)}</strong><br><small>${esc(roleLabel(group.role))}</small></span>${group.id === state.group.id ? '✓' : ''}</button>`).join('')}
+    <div class="menu-separator"></div>
+    <button class="menu-item" data-menu-action="create">＋ Crear grupo</button>
+    <button class="menu-item" data-menu-action="join">→ Unirme con código</button>`;
+  dialog.showModal();
+  dialog.onclick = async event => {
+    const groupButton = event.target.closest('[data-group-id]');
+    if (groupButton) {
+      state.group = state.groups.find(group => group.id === groupButton.dataset.groupId);
+      dialog.close();
+      await enterApp();
+    }
+    const action = event.target.closest('[data-menu-action]')?.dataset.menuAction;
+    if (action) { dialog.close(); document.getElementById(`group-${action}-dialog`).showModal(); }
+  };
+}
+
+function closeMobileMenu() { screens.app.classList.remove('mobile-menu-open'); }
+
+async function handleViewClick(event) {
+  const action = event.target.closest('[data-action]')?.dataset.action;
+  const taskElement = event.target.closest('[data-task-id]');
+  if (action === 'new-task') return openTaskForm();
+  if (action === 'new-class') return openClassForm();
+  if (action === 'retry-view') return navigate();
+  if (action === 'copy-code') return copyCode();
+  if (action === 'logout') return logout();
+  if (action === 'show-activity') { state.settingsTab = 'activity'; location.hash = 'settings'; return; }
+  if (action === 'calendar-prev' || action === 'calendar-next') {
+    state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + (action === 'calendar-next' ? 1 : -1), 1);
+    view.innerHTML = calendarView(state); return;
+  }
+  if (action === 'edit-class') return openClassForm(state.classes.find(item => item.id === event.target.closest('[data-class-id]').dataset.classId));
+  if (action === 'remove-member') return removeMember(event.target.closest('[data-action]'));
+  if (action === 'restore-item') return restoreItem(event.target.closest('[data-action]'));
+  if (action === 'toggle-task') {
+    event.stopPropagation();
+    const button = event.target.closest('[data-action]');
+    return toggleTask(button.dataset.taskId, button.dataset.completed !== '1');
+  }
+  const exportLink = event.target.closest('[data-export]');
+  if (exportLink) { exportLink.href = api.exportUrl(state.group.id, exportLink.dataset.export); exportLink.download = ''; }
+  if (taskElement && !event.target.closest('button[data-action]')) openTaskDetail(taskElement.dataset.taskId);
+}
+
+async function handleViewChange(event) {
+  if (event.target.id === 'class-filter') { state.filters.class_id = event.target.value; await refreshTasksView(); }
+  if (event.target.matches('[data-action="change-role"]')) {
+    try { await api.updateRole(state.group.id, event.target.dataset.userId, event.target.value); toast('Permiso actualizado.', 'success'); state.members = (await api.members(state.group.id)).members; view.innerHTML = teamView(state); }
+    catch (error) { handleError(error); await navigate(); }
+  }
+}
+
+let searchTimer;
+function handleViewInput(event) {
+  if (event.target.id !== 'task-search') return;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => { state.filters.search = event.target.value; await refreshTasksView(); }, 250);
+}
+
+async function handleViewSubmit(event) {
+  event.preventDefault();
+  if (event.target.id === 'profile-form') {
+    const form = event.target; const values = formValues(form); values.email_notifications = form.elements.email_notifications.checked;
+    try { const data = await api.updateProfile(values); state.user = data.user; applyTheme(state.user.theme); syncShell(); toast('Perfil actualizado.', 'success'); view.innerHTML = settingsView(state); }
+    catch (error) { handleError(error); }
+  }
+  if (event.target.id === 'group-settings-form') {
+    try { await api.updateGroup(state.group.id, formValues(event.target)); state.groups = (await api.groups()).groups; state.group = state.groups.find(group => group.id === state.group.id); syncShell(); toast('Grupo actualizado.', 'success'); view.innerHTML = settingsView(state); }
+    catch (error) { handleError(error); }
+  }
+}
+
+view.addEventListener('click', async event => {
+  const status = event.target.closest('[data-status]');
+  if (status) { state.filters.status = status.dataset.status; await refreshTasksView(); }
+  const setting = event.target.closest('[data-settings]');
+  if (setting) {
+    state.settingsTab = setting.dataset.settings;
+    if (state.settingsTab === 'trash' && isManager(state.group)) state.trash = (await api.trash(state.group.id)).items;
+    if (state.settingsTab === 'activity') state.activity = (await api.activity(state.group.id)).activity;
+    view.innerHTML = settingsView(state);
+  }
 });
+
+async function refreshTasksView() {
+  await reloadTasks();
+  view.innerHTML = tasksView(state);
+}
+
+async function toggleTask(taskId, completed) {
+  try {
+    await api.completeTask(state.group.id, taskId, completed);
+    const task = state.tasks.find(item => item.id === taskId); if (task) task.completed = Number(completed);
+    updatePendingBadge();
+    if (state.view === 'home') { state.dashboard = await api.dashboard(state.group.id); view.innerHTML = homeView(state); }
+    else if (state.view === 'tasks') view.innerHTML = tasksView(state);
+    else view.innerHTML = calendarView(state);
+    toast(completed ? 'Tarea completada.' : 'Tarea marcada como pendiente.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+function populateClassOptions(selectedId) {
+  const select = document.getElementById('task-form').elements.class_id;
+  select.innerHTML = state.classes.map(item => `<option value="${esc(item.id)}" ${item.id === selectedId ? 'selected' : ''}>${esc(item.name)}</option>`).join('');
+  updateTopicOptions();
+}
+
+function updateTopicOptions(selectedId = '') {
+  const form = document.getElementById('task-form');
+  const item = state.classes.find(cls => cls.id === form.elements.class_id.value);
+  form.elements.topic_id.innerHTML = `<option value="">Sin tema</option>${(item?.topics || []).map(topic => `<option value="${esc(topic.id)}" ${topic.id === selectedId ? 'selected' : ''}>${esc(topic.name)}</option>`).join('')}`;
+}
+
+async function openTaskForm(task) {
+  if (!isManager(state.group)) return;
+  if (!state.classes.length) { toast('Primero crea una materia.', 'error'); location.hash = 'classes'; return; }
+  const form = document.getElementById('task-form');
+  form.reset();
+  form.elements.id.value = task?.id || '';
+  document.getElementById('task-form-title').textContent = task ? 'Editar tarea' : 'Nueva tarea';
+  let subtasks = [];
+  if (task) {
+    try { subtasks = (await api.task(state.group.id, task.id)).subtasks; } catch (error) { handleError(error); return; }
+  }
+  populateClassOptions(task?.class_id || state.classes[0].id);
+  updateTopicOptions(task?.topic_id || '');
+  form.elements.title.value = task?.title || '';
+  form.elements.description.value = task?.description || '';
+  form.elements.due_at.value = dateInput(task?.due_at);
+  form.elements.is_important.checked = Boolean(Number(task?.is_important));
+  form.elements.subtasks.value = subtasks.map(item => item.title).join('\n');
+  document.getElementById('task-dialog').showModal();
+}
+
+async function saveTask(event) {
+  event.preventDefault();
+  const form = event.currentTarget; setBusy(form, true);
+  try {
+    const values = formValues(form);
+    const id = values.id; delete values.id;
+    values.topic_id = values.topic_id || null;
+    values.due_at = new Date(values.due_at).toISOString();
+    values.is_important = form.elements.is_important.checked;
+    values.subtasks = values.subtasks.split('\n').map(item => item.trim()).filter(Boolean);
+    if (id) await api.updateTask(state.group.id, id, values); else await api.createTask(state.group.id, values);
+    form.closest('dialog').close();
+    await loadCore(); await navigate();
+    toast(id ? 'Tarea actualizada.' : 'Tarea creada.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+function openClassForm(item) {
+  const form = document.getElementById('class-form'); form.reset();
+  form.elements.id.value = item?.id || '';
+  document.getElementById('class-form-title').textContent = item ? 'Editar materia' : 'Nueva materia';
+  for (const field of ['name', 'code', 'teacher', 'room', 'schedule', 'color']) if (item) form.elements[field].value = item[field] || '';
+  form.elements.color.value = item?.color || '#6366f1';
+  form.elements.topics.value = (item?.topics || []).map(topic => topic.name).join('\n');
+  document.getElementById('class-delete').hidden = !item;
+  document.getElementById('class-dialog').showModal();
+}
+
+async function saveClass(event) {
+  event.preventDefault();
+  const form = event.currentTarget; setBusy(form, true);
+  try {
+    const values = formValues(form); const id = values.id; delete values.id;
+    values.topics = values.topics.split('\n').map(item => item.trim()).filter(Boolean);
+    if (id) await api.updateClass(state.group.id, id, values); else await api.createClass(state.group.id, values);
+    form.closest('dialog').close(); state.classes = (await api.classes(state.group.id)).classes; await navigate();
+    toast(id ? 'Materia actualizada.' : 'Materia creada.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function openTaskDetail(taskId) {
+  try {
+    const data = await api.task(state.group.id, taskId);
+    renderTaskDetail(data);
+    document.getElementById('task-detail-dialog').showModal();
+    const url = new URL(location.href);
+    url.searchParams.set('group', state.group.id);
+    url.searchParams.set('task', taskId);
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  } catch (error) { handleError(error); }
+}
+
+function renderTaskDetail(data) {
+  const { task } = data;
+  document.getElementById('task-detail-content').innerHTML = `
+    <div class="detail-hero">
+      <div style="display:flex;justify-content:space-between;gap:12px"><span class="pill"><span class="dot" style="background:${esc(task.class_color)}"></span>${esc(task.class_name)}</span><button class="icon-button" data-detail-action="close">×</button></div>
+      <h2>${esc(task.title)}</h2><p class="muted">Entrega ${esc(dateTime(task.due_at))}</p>
+      <div class="detail-actions"><button class="button ${Number(task.completed) ? 'secondary' : 'primary'}" data-detail-action="toggle" data-completed="${Number(task.completed)}">${Number(task.completed) ? '✓ Completada' : 'Marcar completada'}</button>${isManager(state.group) ? '<button class="button secondary" data-detail-action="edit">Editar</button><button class="button danger" data-detail-action="delete">Eliminar</button>' : ''}</div>
+    </div>
+    <div class="detail-sections">
+      ${task.description ? `<section class="detail-section"><h3>Instrucciones</h3><p style="white-space:pre-wrap;line-height:1.65">${esc(task.description)}</p></section>` : ''}
+      <section class="detail-section"><h3>Pasos</h3><div class="checklist">${data.subtasks.length ? data.subtasks.map(item => `<label><input type="checkbox" data-detail-action="subtask" data-subtask-id="${esc(item.id)}" ${Number(item.completed) ? 'checked' : ''}><span>${esc(item.title)}</span></label>`).join('') : '<p class="muted">Esta tarea no tiene pasos adicionales.</p>'}</div></section>
+      <section class="detail-section"><h3>Recordatorios</h3><div class="stack-sm">${data.reminders.length ? data.reminders.map(item => `<div class="setting-row"><div><strong>${esc(dateTime(item.remind_at))}</strong><p>${esc(item.status === 'scheduled' ? 'Correo programado' : item.status === 'pending' ? 'En cola para programarse' : item.status === 'failed' ? 'No se pudo programar' : item.status)}</p></div><button class="button ghost small" data-detail-action="delete-reminder" data-reminder-id="${esc(item.id)}">Cancelar</button></div>`).join('') : '<p class="muted">No tienes recordatorios para esta tarea.</p>'}</div><form class="inline-form" id="reminder-form"><input type="datetime-local" name="remind_at" min="${dateInput(new Date(Date.now() + 120000))}" required><button class="button secondary">Programar correo</button></form></section>
+      <section class="detail-section"><h3>Comentarios</h3><div>${data.comments.length ? data.comments.map(comment => `<div class="comment">${avatar(comment.user_name, 'small')}<div class="comment-bubble"><small><strong>${esc(comment.user_name)}</strong> · ${esc(dateTime(comment.created_at))}</small><p>${esc(comment.body)}</p></div></div>`).join('') : '<p class="muted">Todavía no hay comentarios.</p>'}</div><form class="inline-form" id="comment-form"><input name="body" maxlength="2000" placeholder="Escribe una aclaración…" required><button class="button secondary">Enviar</button></form></section>
+      <section class="detail-section"><h3>Archivos y enlaces</h3>${data.attachments.length ? data.attachments.map(item => `<p><a class="text-link" href="${esc(item.url)}" target="_blank" rel="noopener">↗ ${esc(item.name)}</a></p>`).join('') : '<p class="muted">No hay archivos adjuntos.</p>'}${isManager(state.group) ? '<form class="inline-form" id="attachment-form"><input name="name" placeholder="Nombre del archivo" required><input name="url" type="url" placeholder="https://…" required><button class="button secondary">Añadir</button></form>' : ''}</section>
+      ${data.member_progress.length ? `<section class="detail-section"><h3>Avance del equipo</h3><div class="class-topics">${data.member_progress.map(member => `<span class="pill ${member.completed_at ? 'success' : ''}">${esc(member.name)} ${member.completed_at ? '✓' : '·'}</span>`).join('')}</div></section>` : ''}
+    </div>`;
+  document.getElementById('task-detail-content').dataset.taskId = task.id;
+  document.getElementById('task-detail-content')._task = task;
+}
+
+async function handleDetailClick(event) {
+  const target = event.target.closest('[data-detail-action]'); if (!target) return;
+  const action = target.dataset.detailAction; const container = document.getElementById('task-detail-content'); const task = container._task;
+  try {
+    if (action === 'close') return closeTaskDetail();
+    if (action === 'toggle') { await api.completeTask(state.group.id, task.id, target.dataset.completed !== '1'); await loadCore(); const detail = await api.task(state.group.id, task.id); renderTaskDetail(detail); }
+    if (action === 'subtask') await api.completeSubtask(state.group.id, task.id, target.dataset.subtaskId, target.checked);
+    if (action === 'edit') { closeTaskDetail(); await openTaskForm(task); }
+    if (action === 'delete' && confirm(`¿Mover "${task.title}" a la papelera?`)) { await api.deleteTask(state.group.id, task.id); closeTaskDetail(); await loadCore(); await navigate(); toast('Tarea movida a la papelera.', 'success'); }
+    if (action === 'delete-reminder') { await api.deleteReminder(state.group.id, task.id, target.dataset.reminderId); renderTaskDetail(await api.task(state.group.id, task.id)); toast('Recordatorio cancelado.', 'success'); }
+  } catch (error) { handleError(error); }
+}
+
+async function handleDetailSubmit(event) {
+  event.preventDefault();
+  const form = event.target; const taskId = document.getElementById('task-detail-content').dataset.taskId;
+  setBusy(form, true);
+  try {
+    const values = formValues(form);
+    if (form.id === 'comment-form') await api.addComment(state.group.id, taskId, values.body);
+    if (form.id === 'reminder-form') await api.addReminder(state.group.id, taskId, new Date(values.remind_at).toISOString());
+    if (form.id === 'attachment-form') await api.addAttachment(state.group.id, taskId, values);
+    renderTaskDetail(await api.task(state.group.id, taskId));
+    toast(form.id === 'reminder-form' ? 'Correo programado.' : 'Información añadida.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+function closeTaskDetail() {
+  document.getElementById('task-detail-dialog').close();
+  const url = new URL(location.href);
+  url.searchParams.delete('task');
+  history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
+function openDeepLink() {
+  const taskId = new URL(location.href).searchParams.get('task');
+  if (taskId) openTaskDetail(taskId);
+}
+
+function openSearch() {
+  const dialog = document.getElementById('search-dialog'); const input = document.getElementById('global-search-input');
+  input.value = ''; renderSearchResults(); dialog.showModal(); setTimeout(() => input.focus(), 0);
+}
+
+function renderSearchResults() {
+  const term = document.getElementById('global-search-input').value.trim().toLowerCase();
+  const results = state.tasks.filter(task => !term || task.title.toLowerCase().includes(term) || String(task.description).toLowerCase().includes(term)).slice(0, 12);
+  const container = document.getElementById('global-search-results');
+  container.innerHTML = results.length ? results.map(taskRow).join('') : emptyState('⌕', 'Sin resultados', 'Prueba con otras palabras.');
+  container.querySelectorAll('[data-task-id]').forEach(item => item.addEventListener('click', event => { if (event.target.closest('[data-action]')) return; document.getElementById('search-dialog').close(); openTaskDetail(item.dataset.taskId); }));
+}
+
+async function restoreItem(button) {
+  try {
+    if (button.dataset.type === 'task') await api.restoreTask(state.group.id, button.dataset.id);
+    else await api.restoreClass(state.group.id, button.dataset.id);
+    state.trash = (await api.trash(state.group.id)).items; view.innerHTML = settingsView(state); toast('Elemento restaurado.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+async function deleteClass() {
+  const form = document.getElementById('class-form');
+  const classId = form.elements.id.value;
+  const item = state.classes.find(cls => cls.id === classId);
+  if (!item || !confirm(`¿Mover "${item.name}" y sus tareas a la papelera?`)) return;
+  setBusy(form, true);
+  try {
+    await api.deleteClass(state.group.id, classId);
+    form.closest('dialog').close();
+    await loadCore();
+    await navigate();
+    toast('Materia movida a la papelera.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function removeMember(button) {
+  if (!confirm(`¿Quitar a ${button.dataset.userName} del grupo?`)) return;
+  try {
+    await api.removeMember(state.group.id, button.dataset.userId);
+    state.members = (await api.members(state.group.id)).members;
+    view.innerHTML = teamView(state);
+    toast('La persona fue retirada del grupo.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+async function copyCode() {
+  await navigator.clipboard.writeText(state.group.join_code);
+  toast('Código de invitación copiado.', 'success');
+}
+
+async function logout() {
+  try { await api.logout(); } catch {}
+  state.user = null; state.groups = []; state.group = null; localStorage.removeItem('bdt_group');
+  showScreen('auth');
+}
+
+init();

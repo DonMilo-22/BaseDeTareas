@@ -8,3 +8,6 @@ node_modules/
 .DS_Store
 .vercel/
 npm-debug.log*
+coverage/
+test-results/
+playwright-report/
