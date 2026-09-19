@@ -1,7 +1,15 @@
 import { z } from 'zod';
 import { badRequest } from './errors.js';
 
-export const idSchema = z.string().uuid();
+// IDs created by v2 are UUIDs, but the production database also contains
+// records created by the previous app (for example `grp_xxx`, `cls_xxx`,
+// `tsk_xxx`, and numeric IDs). Treat IDs as opaque, URL-safe database keys so
+// those existing records remain usable after the upgrade.
+export const idSchema = z.string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/, 'El identificador no es válido.');
 export const emailSchema = z.string().trim().toLowerCase().email().max(254);
 export const passwordSchema = z.string().min(8).max(128);
 export const nameSchema = z.string().trim().min(2).max(80);

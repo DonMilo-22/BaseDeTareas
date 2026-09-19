@@ -39,11 +39,45 @@ describe('Base de Tareas v2 API', () => {
   });
 
   it('registers users without allowing role selection', async () => {
-    await admin.post('/api/auth/register').send({ name: 'Administradora', email: 'admin@example.com', password: 'Segura-1234', role: 'admin' }).expect(201);
+    const registeredAdmin = await admin.post('/api/auth/register').send({ name: 'Administradora', email: 'admin@example.com', password: 'Segura-1234', role: 'admin' }).expect(201);
+    adminUserId = registeredAdmin.body.user.id;
     await member.post('/api/auth/register').send({ name: 'Estudiante', email: 'member@example.com', password: 'Segura-5678' }).expect(201);
     const me = await admin.get('/api/auth/me').expect(200);
     expect(me.body.groups).toEqual([]);
     expect(me.body.user).not.toHaveProperty('password_hash');
+  });
+
+  it('keeps prefixed IDs from the previous production app usable', async () => {
+    const legacyGroupId = 'grp_productionlegacy';
+    const legacyClassId = 'cls_productionlegacy';
+    const legacyTaskId = 'tsk_productionlegacy';
+    await db.batch([
+      {
+        sql: `INSERT INTO groups (id, name, description, join_code, created_by)
+              VALUES (?, 'Grupo heredado', '', 'LEGACY01', ?)`,
+        args: [legacyGroupId, adminUserId],
+      },
+      {
+        sql: `INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'admin')`,
+        args: [legacyGroupId, adminUserId],
+      },
+      {
+        sql: `INSERT INTO classes (id, group_id, name, created_by)
+              VALUES (?, ?, 'Materia heredada', ?)`,
+        args: [legacyClassId, legacyGroupId, adminUserId],
+      },
+      {
+        sql: `INSERT INTO tasks
+              (id, group_id, class_id, title, due_at, created_by, updated_by)
+              VALUES (?, ?, ?, 'Tarea heredada', ?, ?, ?)`,
+        args: [legacyTaskId, legacyGroupId, legacyClassId, new Date(Date.now() + 90 * 86400000).toISOString(), adminUserId, adminUserId],
+      },
+    ], 'write');
+
+    const dashboard = await admin.get(`/api/groups/${legacyGroupId}/dashboard`).expect(200);
+    expect(Number(dashboard.body.summary.total)).toBe(1);
+    const detail = await admin.get(`/api/groups/${legacyGroupId}/tasks/${legacyTaskId}`).expect(200);
+    expect(detail.body.task.title).toBe('Tarea heredada');
   });
 
   it('creates a group and makes only its creator admin', async () => {
@@ -59,7 +93,7 @@ describe('Base de Tareas v2 API', () => {
     expect(forbiddenClass.body.error.code).toBe('FORBIDDEN');
     const members = await admin.get(`/api/groups/${groupId}/members`).expect(200);
     const student = members.body.members.find(item => item.name === 'Estudiante');
-    adminUserId = members.body.members.find(item => item.name === 'Administradora').id;
+    expect(members.body.members.find(item => item.name === 'Administradora').id).toBe(adminUserId);
     expect(student).not.toHaveProperty('email');
     await admin.patch(`/api/groups/${groupId}/members/${student.id}`).send({ role: 'manager' }).expect(200);
     await member.patch(`/api/groups/${groupId}/members/${adminUserId}`).send({ role: 'member' }).expect(403);
