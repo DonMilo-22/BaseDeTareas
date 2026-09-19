@@ -1,4 +1,4 @@
-const CACHE = 'base-de-tareas-v2.1-shell';
+const CACHE = 'base-de-tareas-v2.2-shell';
 const SHELL = ['/', '/index.html', '/css/app.css', '/js/app.js', '/js/api.js', '/js/ui.js', '/js/views.js', '/icon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', event => {
