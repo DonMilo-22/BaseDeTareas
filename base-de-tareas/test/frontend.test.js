@@ -142,4 +142,12 @@ describe('interfaz v2', () => {
     expect(activitySentence({ user_name: 'Emiliano', summary: 'Completó la tarea Investigación.' }))
       .toBe('Emiliano completó la tarea Investigación.');
   });
+
+  it('interprets SQLite timestamps as UTC without changing zoned dates', async () => {
+    const { dateTime, parseDate } = await import('../public/js/ui.js');
+    expect(parseDate('2026-09-19 14:12:00').toISOString()).toBe('2026-09-19T14:12:00.000Z');
+    expect(parseDate('2026-09-19T14:12:00.000Z').toISOString()).toBe('2026-09-19T14:12:00.000Z');
+    expect(parseDate('2026-09-19T08:12:00-06:00').toISOString()).toBe('2026-09-19T14:12:00.000Z');
+    expect(dateTime('2026-09-19 14:12:00', { timeZone: 'America/Mexico_City' })).toContain('8:12');
+  });
 });

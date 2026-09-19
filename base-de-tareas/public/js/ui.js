@@ -15,21 +15,28 @@ export function activitySentence(item) {
   return `${name} ${summary.charAt(0).toLocaleLowerCase('es')}${summary.slice(1)}`;
 }
 
+export function parseDate(value) {
+  if (value instanceof Date) return new Date(value.getTime());
+  const timestamp = String(value ?? '').trim();
+  const sqliteUtc = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(timestamp);
+  return new Date(sqliteUtc ? `${timestamp.replace(' ', 'T')}Z` : timestamp);
+}
+
 export function dateTime(value, options = {}) {
   if (!value) return 'Sin fecha';
   return new Intl.DateTimeFormat('es-MX', {
     day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', ...options,
-  }).format(new Date(value));
+  }).format(parseDate(value));
 }
 
 export function dateInput(value) {
-  const date = value ? new Date(value) : new Date(Date.now() + 86400000);
+  const date = value ? parseDate(value) : new Date(Date.now() + 86400000);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
 }
 
 export function relativeDate(value) {
-  const target = new Date(value);
+  const target = parseDate(value);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
