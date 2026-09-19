@@ -92,16 +92,60 @@ export function announcementsView(state) {
 
 export function classesView(state) {
   return `
-    ${pageHead('Tu semestre', 'Materias', 'Un espacio claro para cada clase y sus temas.', isManager(state.group) ? '<button class="button primary" data-action="new-class">＋ Nueva materia</button>' : '')}
-    <section class="card-grid">
-      ${state.classes.length ? state.classes.map(item => `
-        <article class="class-card surface" data-class-id="${esc(item.id)}">
-          <div class="class-card-head"><div class="class-icon" style="background:${esc(item.color)}">${esc(item.name[0])}</div>${isManager(state.group) ? `<button class="icon-button" data-action="edit-class" data-class-id="${esc(item.id)}">···</button>` : ''}</div>
-          <h2>${esc(item.name)}</h2><p class="muted">${esc(item.teacher || item.code || 'Sin información adicional')}</p>
-          <div class="class-data"><div><strong>${Number(item.completed_count)}</strong><small>Completadas</small></div><div><strong>${Number(item.task_count)}</strong><small>Tareas</small></div></div>
-          <div class="class-topics">${item.topics.slice(0, 5).map(topic => `<span class="pill">${esc(topic.name)}</span>`).join('')}${item.topics.length > 5 ? `<span class="pill">+${item.topics.length - 5}</span>` : ''}</div>
-        </article>`).join('') : emptyState('▤', 'Aún no hay materias', isManager(state.group) ? 'Crea las materias del semestre para comenzar.' : 'Un administrador o gestor debe crear la primera materia.', isManager(state.group) ? '<button class="button primary" data-action="new-class">Crear materia</button>' : '')}
+    ${pageHead('Tu semestre', 'Materias', 'Abre una materia y explora sus unidades sin llenar la pantalla de información.', isManager(state.group) ? '<button class="button primary" data-action="new-class">＋ Nueva materia</button>' : '')}
+    <section class="card-grid class-grid">
+      ${state.classes.length ? state.classes.map(item => classCard(item, state)).join('') : emptyState('▤', 'Aún no hay materias', isManager(state.group) ? 'Crea las materias del semestre para comenzar.' : 'Un administrador o gestor debe crear la primera materia.', isManager(state.group) ? '<button class="button primary" data-action="new-class">Crear materia</button>' : '')}
     </section>`;
+}
+
+function classCard(item, state) {
+  const expanded = state.expandedClassId === item.id;
+  const selectedTopicId = state.selectedTopicByClass[item.id] || null;
+  const selectedTopic = item.topics.find(topic => topic.id === selectedTopicId);
+  const topicTasks = selectedTopic
+    ? state.tasks.filter(task => task.class_id === item.id && task.topic_id === selectedTopic.id)
+    : [];
+  const subtitle = [item.code, item.teacher].filter(Boolean).join(' · ') || 'Toca para consultar la materia';
+  const detail = value => esc(value || 'Sin especificar');
+  return `
+    <article class="class-card surface ${expanded ? 'expanded' : ''}" data-class-id="${esc(item.id)}" style="--class-color:${esc(item.color)}">
+      <div class="class-card-accent" aria-hidden="true"></div>
+      <header class="class-card-head">
+        <button class="class-card-toggle" type="button" data-action="toggle-class" data-class-id="${esc(item.id)}" aria-expanded="${expanded}" aria-label="${expanded ? 'Cerrar' : 'Abrir'} ${esc(item.name)}">
+          <span class="class-icon">${esc(item.name[0])}</span>
+          <span class="class-card-title"><strong>${esc(item.name)}</strong><small>${esc(subtitle)}</small></span>
+          <span class="class-chevron" aria-hidden="true">⌄</span>
+        </button>
+        ${isManager(state.group) ? `<button class="icon-button class-edit" type="button" data-action="edit-class" data-class-id="${esc(item.id)}" aria-label="Editar ${esc(item.name)}" title="Editar materia">···</button>` : ''}
+      </header>
+      <div class="class-data">
+        <div><strong>${Number(item.completed_count)}</strong><small>Completadas por ti</small></div>
+        <div><strong>${Number(item.task_count)}</strong><small>Tareas</small></div>
+        <div><strong>${item.topics.length}</strong><small>Unidades</small></div>
+      </div>
+      ${expanded ? `
+        <section class="class-expanded">
+          <div class="class-info-grid">
+            <div><small>Clave</small><strong>${detail(item.code)}</strong></div>
+            <div><small>Profesor</small><strong>${detail(item.teacher)}</strong></div>
+            <div><small>Horario</small><strong>${detail(item.schedule)}</strong></div>
+            <div><small>Aula</small><strong>${detail(item.room)}</strong></div>
+          </div>
+          <details class="class-units" open>
+            <summary><span><strong>Unidades y temas</strong><small>Selecciona uno para mostrar únicamente sus tareas.</small></span><span class="collapse-chevron">⌄</span></summary>
+            ${item.topics.length ? `
+              <div class="class-topic-buttons">
+                ${item.topics.map(topic => `<button type="button" class="class-topic-button ${topic.id === selectedTopicId ? 'active' : ''}" data-action="select-class-topic" data-class-id="${esc(item.id)}" data-topic-id="${esc(topic.id)}" aria-pressed="${topic.id === selectedTopicId}"><span>${esc(topic.name)}</span><b>${state.tasks.filter(task => task.class_id === item.id && task.topic_id === topic.id).length}</b></button>`).join('')}
+              </div>
+              <div class="class-topic-tasks">
+                ${selectedTopic
+                  ? `<div class="class-topic-heading"><div><span class="eyebrow">Tareas de la unidad</span><h3>${esc(selectedTopic.name)}</h3></div><span class="pill">${topicTasks.length}</span></div>${topicTasks.length ? topicTasks.map(taskRow).join('') : emptyState('✓', 'No hay tareas en esta unidad', 'Cuando se agregue una tarea con este tema aparecerá aquí.')}`
+                  : `<div class="class-topic-placeholder"><span>↖</span><div><strong>Elige una unidad o tema</strong><p>Las tareas permanecerán ocultas hasta que selecciones una opción.</p></div></div>`}
+              </div>`
+              : `<div class="class-topic-placeholder"><span>＋</span><div><strong>Esta materia no tiene unidades</strong><p>Un administrador o gestor puede agregarlas desde el menú de tres puntos.</p></div></div>`}
+          </details>
+        </section>` : ''}
+    </article>`;
 }
 
 export function teamView(state) {

@@ -15,6 +15,8 @@ const state = {
   trash: [],
   view: 'home',
   settingsTab: 'profile',
+  expandedClassId: null,
+  selectedTopicByClass: {},
   filters: { search: '', class_id: '', status: '' },
   calendarDate: new Date(),
   avatarDraft: undefined,
@@ -184,6 +186,7 @@ async function navigate() {
       view.innerHTML = calendarView(state);
     } else if (state.view === 'classes') {
       state.classes = (await api.classes(state.group.id)).classes;
+      if (!state.classes.some(item => item.id === state.expandedClassId)) state.expandedClassId = null;
       view.innerHTML = classesView(state);
     } else if (state.view === 'team') {
       state.members = (await api.members(state.group.id)).members;
@@ -456,6 +459,20 @@ async function handleViewClick(event) {
     state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + (action === 'calendar-next' ? 1 : -1), 1);
     view.innerHTML = calendarView(state); return;
   }
+  if (action === 'toggle-class') {
+    const classId = event.target.closest('[data-class-id]').dataset.classId;
+    state.expandedClassId = state.expandedClassId === classId ? null : classId;
+    if (state.expandedClassId) state.selectedTopicByClass[classId] = null;
+    view.innerHTML = classesView(state);
+    return;
+  }
+  if (action === 'select-class-topic') {
+    const button = event.target.closest('[data-action]');
+    const current = state.selectedTopicByClass[button.dataset.classId];
+    state.selectedTopicByClass[button.dataset.classId] = current === button.dataset.topicId ? null : button.dataset.topicId;
+    view.innerHTML = classesView(state);
+    return;
+  }
   if (action === 'edit-class') return openClassForm(state.classes.find(item => item.id === event.target.closest('[data-class-id]').dataset.classId));
   if (action === 'remove-member') return removeMember(event.target.closest('[data-action]'));
   if (action === 'restore-item') return restoreItem(event.target.closest('[data-action]'));
@@ -534,7 +551,10 @@ async function toggleTask(taskId, completed) {
     updatePendingBadge();
     if (state.view === 'home') { state.dashboard = await api.dashboard(state.group.id); view.innerHTML = homeView(state); }
     else if (state.view === 'tasks') view.innerHTML = tasksView(state);
-    else view.innerHTML = calendarView(state);
+    else if (state.view === 'classes') {
+      state.classes = (await api.classes(state.group.id)).classes;
+      view.innerHTML = classesView(state);
+    } else view.innerHTML = calendarView(state);
     toast(completed ? 'Tarea completada.' : 'Tarea marcada como pendiente.', 'success');
   } catch (error) { handleError(error); }
 }

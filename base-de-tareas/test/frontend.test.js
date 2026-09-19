@@ -106,17 +106,36 @@ describe('interfaz v2', () => {
     document.querySelector('[data-action="new-class"]').click();
     const classForm = document.getElementById('class-form');
     classForm.querySelector('[name="name"]').value = 'Arquitectura';
+    classForm.querySelector('[name="code"]').value = 'AC-01';
+    classForm.querySelector('[name="teacher"]').value = 'Dra. Rivera';
+    classForm.querySelector('[name="schedule"]').value = 'Lun y mié · 10:00';
+    classForm.querySelector('[name="room"]').value = 'Laboratorio 2';
+    classForm.querySelector('[name="color"]').value = '#0f766e';
     classForm.querySelector('[name="topics"]').value = 'Unidad 1\nUnidad 2';
     classForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     await waitFor(() => !document.getElementById('class-dialog').open && document.getElementById('view').textContent.includes('Arquitectura'));
 
+    document.querySelector('.class-card-toggle').click();
+    await waitFor(() => document.querySelector('.class-card.expanded'));
+    expect(document.querySelector('.class-expanded').textContent).toContain('Dra. Rivera');
+    expect(document.querySelector('.class-expanded').textContent).toContain('Laboratorio 2');
+    expect(document.querySelector('.class-topic-placeholder').textContent).toContain('Elige una unidad');
+    expect(document.querySelector('.class-topic-tasks .task-row')).toBeNull();
+
     document.getElementById('quick-add').click();
     const taskForm = document.getElementById('task-form');
     taskForm.querySelector('[name="title"]').value = 'Reporte final';
+    taskForm.querySelector('[name="topic_id"]').value = [...taskForm.querySelector('[name="topic_id"]').options].find(option => option.value)?.value;
     taskForm.querySelector('[name="due_at"]').value = calendarValue;
     taskForm.querySelector('[name="subtasks"]').value = 'Investigar\nRedactar';
     taskForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
-    await waitFor(() => !document.getElementById('task-dialog').open);
+    await waitFor(() => !document.getElementById('task-dialog').open && document.querySelector('.class-topic-button'));
+
+    document.querySelector('.class-topic-button').click();
+    await waitFor(() => document.querySelector('.class-topic-tasks')?.textContent.includes('Reporte final'));
+    expect(document.querySelector('.class-topic-button').getAttribute('aria-pressed')).toBe('true');
+    document.querySelector('.class-topic-button').click();
+    expect(document.querySelector('.class-topic-placeholder').textContent).toContain('permanecerán ocultas');
 
     document.querySelector('[data-view="tasks"]').click();
     await waitFor(() => document.getElementById('view').textContent.includes('Reporte final'));

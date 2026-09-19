@@ -31,16 +31,26 @@ test('flujo principal de escritorio', async ({ page }, testInfo) => {
   await page.getByRole('link', { name: /Materias/ }).click();
   await page.getByRole('button', { name: /Nueva materia/ }).click();
   await page.locator('#class-form input[name="name"]').fill('Arquitectura de Computadoras');
+  await page.locator('#class-form input[name="teacher"]').fill('Dra. Rivera');
+  await page.locator('#class-form input[name="room"]').fill('Laboratorio 2');
   await page.locator('#class-form textarea[name="topics"]').fill('Unidad 1\nUnidad 2');
   await page.locator('#class-form button[value="default"]').click();
   await expect(page.getByRole('heading', { name: 'Arquitectura de Computadoras' })).toBeVisible();
+  await page.locator('.class-card-toggle').click();
+  await expect(page.locator('.class-card.expanded')).toBeVisible();
+  await expect(page.locator('.class-expanded')).toContainText('Dra. Rivera');
+  await expect(page.locator('.class-topic-placeholder')).toContainText('Elige una unidad');
 
   await page.locator('#quick-add').click();
   await page.locator('#task-form input[name="title"]').fill('Reporte de memoria');
+  await page.locator('#task-form select[name="topic_id"]').selectOption({ label: 'Unidad 1' });
   await page.locator('#task-form textarea[name="description"]').fill('Comparar el consumo antes y después.');
   await page.locator('#task-form textarea[name="subtasks"]').fill('Tomar capturas\nRedactar conclusión');
   await page.locator('#task-form input[name="due_at"]').fill(new Date(Date.now() + 86400000).toISOString().slice(0, 16));
   await page.locator('#task-form button[value="default"]').click();
+
+  await page.locator('.class-topic-button', { hasText: 'Unidad 1' }).click();
+  await expect(page.locator('.class-topic-tasks').getByText('Reporte de memoria')).toBeVisible();
 
   await page.getByRole('link', { name: /Tareas/ }).click();
   await expect(page.getByText('Reporte de memoria')).toBeVisible();
@@ -87,14 +97,23 @@ test('la experiencia móvil permite recorrer y operar todas las vistas', async (
   await page.locator('#sidebar a[href="#classes"]').click();
   await page.getByRole('button', { name: /Nueva materia/ }).click();
   await page.locator('#class-form input[name="name"]').fill('Redes móviles');
+  await page.locator('#class-form input[name="schedule"]').fill('Martes · 12:00');
+  await page.locator('#class-form textarea[name="topics"]').fill('Unidad móvil\nProyecto final');
   await page.locator('#class-form button[value="default"]').click();
   await expect(page.getByRole('heading', { name: 'Redes móviles' })).toBeVisible();
+  await page.locator('.class-card-toggle').click();
+  await expect(page.locator('.class-card.expanded')).toBeVisible();
+  await expect(page.locator('.class-topic-placeholder')).toContainText('Elige una unidad');
   await assertNoOverflow();
 
   await page.locator('#quick-add').click();
   await page.locator('#task-form input[name="title"]').fill('Prueba responsiva');
+  await page.locator('#task-form select[name="topic_id"]').selectOption({ label: 'Unidad móvil' });
   await page.locator('#task-form input[name="due_at"]').fill(calendarValue);
   await page.locator('#task-form button[value="default"]').click();
+  await page.locator('.class-topic-button', { hasText: 'Unidad móvil' }).click();
+  await expect(page.locator('.class-topic-tasks').getByText('Prueba responsiva')).toBeVisible();
+  await assertNoOverflow();
 
   await page.locator('.mobile-nav a[href="#announcements"]').click();
   await page.getByRole('button', { name: /Nuevo anuncio/ }).click();
