@@ -73,6 +73,10 @@ afterAll(async () => {
 
 describe('interfaz v2', () => {
   it('completa registro, onboarding y carga el dashboard sin error de JavaScript', async () => {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const calendarDate = new Date(now.getFullYear(), now.getMonth(), Math.min(now.getDate() + 1, lastDay), 12);
+    const calendarValue = calendarDate.toISOString().slice(0, 16);
     await waitFor(() => !document.getElementById('auth-screen').hidden);
     document.querySelector('[data-auth-tab="register"]').click();
     const register = document.getElementById('register-form');
@@ -104,7 +108,7 @@ describe('interfaz v2', () => {
     document.getElementById('quick-add').click();
     const taskForm = document.getElementById('task-form');
     taskForm.querySelector('[name="title"]').value = 'Reporte final';
-    taskForm.querySelector('[name="due_at"]').value = new Date(Date.now() + 86400000).toISOString().slice(0, 16);
+    taskForm.querySelector('[name="due_at"]').value = calendarValue;
     taskForm.querySelector('[name="subtasks"]').value = 'Investigar\nRedactar';
     taskForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     await waitFor(() => !document.getElementById('task-dialog').open);
@@ -121,12 +125,16 @@ describe('interfaz v2', () => {
     document.querySelector('[data-action="new-announcement"]').click();
     const announcementForm = document.getElementById('announcement-form');
     announcementForm.querySelector('[name="body"]').value = 'El martes traer libreta y lápiz.';
-    announcementForm.querySelector('[name="event_at"]').value = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 16);
+    announcementForm.querySelector('[name="event_at"]').value = calendarValue;
     announcementForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     await waitFor(() => !document.getElementById('announcement-dialog').open && document.getElementById('view').textContent.includes('traer libreta'));
 
     document.querySelector('[data-view="calendar"]').click();
     await waitFor(() => document.getElementById('view').textContent.includes('Aviso · El martes traer libreta'));
+    expect(document.querySelector('.mobile-agenda').textContent).toContain('Reporte final');
+    expect(document.querySelector('.mobile-agenda').textContent).toContain('El martes traer libreta y lápiz.');
+    expect(document.querySelector('.mobile-nav a[href="#announcements"]')).not.toBeNull();
+    expect(document.querySelector('.mobile-nav a[href="#calendar"] small').textContent).toBe('Agenda');
   });
 
   it('includes the actor name in activity sentences', async () => {

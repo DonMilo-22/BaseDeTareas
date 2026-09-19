@@ -190,20 +190,22 @@ function bindStaticEvents() {
     localStorage.setItem('bdt_sidebar', screens.app.classList.contains('sidebar-collapsed') ? 'collapsed' : 'open');
   });
   if (localStorage.getItem('bdt_sidebar') === 'collapsed') screens.app.classList.add('sidebar-collapsed');
-  document.getElementById('mobile-menu').addEventListener('click', () => screens.app.classList.add('mobile-menu-open'));
+  document.getElementById('mobile-menu').addEventListener('click', openMobileMenu);
+  document.getElementById('mobile-sidebar-close').addEventListener('click', closeMobileMenu);
   document.getElementById('mobile-backdrop').addEventListener('click', closeMobileMenu);
   document.querySelectorAll('[data-view]').forEach(link => link.addEventListener('click', closeMobileMenu));
   addEventListener('hashchange', navigate);
   addEventListener('popstate', openDeepLink);
+  addEventListener('resize', () => { if (innerWidth > 900) closeMobileMenu(); });
 
   document.getElementById('group-switcher').addEventListener('click', showGroupMenu);
   document.getElementById('profile-button').addEventListener('click', () => { location.hash = 'settings'; state.settingsTab = 'profile'; });
   document.getElementById('quick-add').addEventListener('click', () => openTaskForm());
-  document.getElementById('mobile-add').addEventListener('click', () => openTaskForm());
   document.getElementById('global-search').addEventListener('click', openSearch);
   document.getElementById('global-search-input').addEventListener('input', renderSearchResults);
   addEventListener('keydown', event => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSearch(); }
+    if (event.key === 'Escape' && screens.app.classList.contains('mobile-menu-open')) closeMobileMenu();
   });
 
   view.addEventListener('click', handleViewClick);
@@ -286,7 +288,18 @@ function showGroupMenu() {
   };
 }
 
-function closeMobileMenu() { screens.app.classList.remove('mobile-menu-open'); }
+function openMobileMenu() {
+  screens.app.classList.add('mobile-menu-open');
+  document.body.classList.add('mobile-menu-visible');
+  document.getElementById('mobile-menu').setAttribute('aria-expanded', 'true');
+  document.getElementById('mobile-sidebar-close').focus({ preventScroll: true });
+}
+
+function closeMobileMenu() {
+  screens.app.classList.remove('mobile-menu-open');
+  document.body.classList.remove('mobile-menu-visible');
+  document.getElementById('mobile-menu').setAttribute('aria-expanded', 'false');
+}
 
 async function handleViewClick(event) {
   const action = event.target.closest('[data-action]')?.dataset.action;
@@ -320,7 +333,7 @@ async function handleViewClick(event) {
   const exportLink = event.target.closest('[data-export]');
   if (exportLink) { exportLink.href = api.exportUrl(state.group.id, exportLink.dataset.export); exportLink.download = ''; }
   if (taskElement && !event.target.closest('button[data-action]')) openTaskDetail(taskElement.dataset.taskId);
-  const announcementElement = event.target.closest('.calendar-task[data-announcement-id]');
+  const announcementElement = event.target.closest('.calendar-task[data-announcement-id], .agenda-item[data-announcement-id]');
   if (announcementElement) location.hash = 'announcements';
 }
 
@@ -719,6 +732,7 @@ async function copyCode() {
 async function logout() {
   try { await api.logout(); } catch {}
   state.user = null; state.groups = []; state.group = null; localStorage.removeItem('bdt_group');
+  closeMobileMenu();
   showScreen('auth');
 }
 

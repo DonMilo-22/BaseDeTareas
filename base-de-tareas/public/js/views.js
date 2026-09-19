@@ -46,6 +46,13 @@ export function tasksView(state) {
 
 export function calendarView(state) {
   const monthName = new Intl.DateTimeFormat('es-MX', { month: 'long', year: 'numeric' }).format(state.calendarDate);
+  const agendaItems = [
+    ...state.tasks.map(item => ({ ...item, kind: 'task', when: item.due_at })),
+    ...state.announcements.filter(item => item.event_at).map(item => ({ ...item, kind: 'announcement', when: item.event_at, title: item.body })),
+  ].filter(item => {
+    const date = new Date(item.when);
+    return date.getFullYear() === state.calendarDate.getFullYear() && date.getMonth() === state.calendarDate.getMonth();
+  }).sort((a, b) => new Date(a.when) - new Date(b.when));
   return `
     ${pageHead('Vista mensual', 'Calendario', 'Todas las fechas del grupo en un solo lugar.', '<a class="button secondary" data-export="ics">Añadir a mi calendario</a>')}
     <section class="calendar-shell surface">
@@ -53,6 +60,13 @@ export function calendarView(state) {
       <div class="calendar-grid">
         ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(day => `<div class="calendar-weekday">${day}</div>`).join('')}
         ${calendarCells(state.calendarDate, state.tasks, state.announcements)}
+      </div>
+      <div class="mobile-agenda">
+        ${agendaItems.length ? agendaItems.map(item => `<button class="agenda-item" ${item.kind === 'task' ? `data-task-id="${esc(item.id)}"` : `data-announcement-id="${esc(item.id)}"`}>
+          <span class="agenda-date"><strong>${new Date(item.when).getDate()}</strong><small>${esc(new Intl.DateTimeFormat('es-MX', { month: 'short' }).format(new Date(item.when)))}</small></span>
+          <span class="agenda-copy"><strong>${esc(item.title)}</strong><small>${item.kind === 'task' ? `${esc(item.class_name)} · ${esc(dateTime(item.when))}` : `Anuncio · ${esc(dateTime(item.when))}`}</small></span>
+          <span class="agenda-arrow">›</span>
+        </button>`).join('') : emptyState('□', 'No hay fechas este mes', 'Las tareas y anuncios con fecha aparecerán aquí.')}
       </div>
     </section>`;
 }

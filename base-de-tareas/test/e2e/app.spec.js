@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-test('flujo principal de escritorio', async ({ page }) => {
+test('flujo principal de escritorio', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Validación exclusiva de escritorio');
   const suffix = Date.now();
   const errors = [];
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -42,10 +43,78 @@ test('flujo principal de escritorio', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('la interfaz móvil no tiene desbordamiento horizontal', async ({ page }, testInfo) => {
+test('la experiencia móvil permite recorrer y operar todas las vistas', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'Validación exclusiva de móvil');
+  const suffix = Date.now();
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const calendarDate = new Date(now.getFullYear(), now.getMonth(), Math.min(now.getDate() + 1, lastDay), 12);
+  const calendarValue = calendarDate.toISOString().slice(0, 16);
+  const assertNoOverflow = async () => {
+    const metrics = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth + 1);
+  };
+
   await page.goto('/');
-  const metrics = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));
-  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.innerWidth + 1);
   await expect(page.getByRole('heading', { name: 'Continúa donde te quedaste' })).toBeVisible();
+  await assertNoOverflow();
+  await page.getByRole('tab', { name: 'Crear cuenta' }).click();
+  await page.locator('#register-form input[name="name"]').fill('Prueba Móvil');
+  await page.locator('#register-form input[name="email"]').fill(`mobile-${suffix}@example.com`);
+  await page.locator('#register-form input[name="password"]').fill('Prueba-Segura-123');
+  await page.getByRole('button', { name: 'Crear cuenta' }).last().click();
+
+  await page.getByRole('button', { name: /Crear un grupo/ }).click();
+  await expect(page.locator('#group-create-dialog')).toBeVisible();
+  await page.locator('#group-create-form input[name="name"]').fill(`Móvil ${suffix}`);
+  await page.locator('#group-create-form button[value="default"]').click();
+  await expect(page.getByRole('heading', { name: /Hola, Prueba/ })).toBeVisible();
+  await assertNoOverflow();
+
+  await page.locator('#mobile-menu').click();
+  await expect(page.locator('#sidebar')).toBeVisible();
+  await page.locator('#mobile-sidebar-close').click();
+
+  await page.locator('#mobile-menu').click();
+  await page.locator('#sidebar a[href="#classes"]').click();
+  await page.getByRole('button', { name: /Nueva materia/ }).click();
+  await page.locator('#class-form input[name="name"]').fill('Redes móviles');
+  await page.locator('#class-form button[value="default"]').click();
+  await expect(page.getByRole('heading', { name: 'Redes móviles' })).toBeVisible();
+  await assertNoOverflow();
+
+  await page.locator('#quick-add').click();
+  await page.locator('#task-form input[name="title"]').fill('Prueba responsiva');
+  await page.locator('#task-form input[name="due_at"]').fill(calendarValue);
+  await page.locator('#task-form button[value="default"]').click();
+
+  await page.locator('.mobile-nav a[href="#announcements"]').click();
+  await page.getByRole('button', { name: /Nuevo anuncio/ }).click();
+  await page.locator('#announcement-form textarea[name="body"]').fill('Llevar libreta mañana');
+  await page.locator('#announcement-form input[name="event_at"]').fill(calendarValue);
+  await page.locator('#announcement-form button[type="submit"]').click();
+  await expect(page.getByText('Llevar libreta mañana')).toBeVisible();
+  await assertNoOverflow();
+
+  await page.locator('.mobile-nav a[href="#calendar"]').click();
+  await expect(page.locator('.mobile-agenda')).toBeVisible();
+  await expect(page.locator('.calendar-grid')).toBeHidden();
+  await expect(page.locator('.mobile-agenda').getByText('Prueba responsiva')).toBeVisible();
+  await expect(page.locator('.mobile-agenda').getByText('Llevar libreta mañana')).toBeVisible();
+  await assertNoOverflow();
+
+  await page.locator('.mobile-nav a[href="#tasks"]').click();
+  await page.getByText('Prueba responsiva').click();
+  await expect(page.locator('#task-detail-dialog')).toBeVisible();
+  const dialog = await page.locator('#task-detail-dialog').evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, viewport: window.innerHeight };
+  });
+  expect(dialog.top).toBeGreaterThanOrEqual(0);
+  expect(dialog.bottom).toBeLessThanOrEqual(dialog.viewport + 1);
+  await page.locator('[data-detail-action="close"]').click();
+
+  await page.locator('.mobile-nav a[href="#settings"]').click();
+  await expect(page.getByRole('heading', { name: 'Ajustes' })).toBeVisible();
+  await assertNoOverflow();
 });
