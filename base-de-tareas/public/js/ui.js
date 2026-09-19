@@ -8,6 +8,13 @@ export const roleLabel = role => ({ admin: 'Administrador', manager: 'Gestor', m
 
 export const isManager = group => ['admin', 'manager'].includes(group?.role);
 
+export function activitySentence(item) {
+  const summary = String(item?.summary || '').trim();
+  const name = String(item?.user_name || 'Sistema').trim();
+  if (!summary || summary.toLocaleLowerCase('es').startsWith(name.toLocaleLowerCase('es'))) return summary;
+  return `${name} ${summary.charAt(0).toLocaleLowerCase('es')}${summary.slice(1)}`;
+}
+
 export function dateTime(value, options = {}) {
   if (!value) return 'Sin fecha';
   return new Intl.DateTimeFormat('es-MX', {
@@ -76,11 +83,14 @@ export function pageHead(eyebrow, title, subtitle, actions = '') {
   return `<header class="page-head"><div><span class="eyebrow">${esc(eyebrow)}</span><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="page-actions">${actions}</div></header>`;
 }
 
-export function avatar(name, size = '') {
-  return `<span class="avatar ${size}">${esc(initials(name))}</span>`;
+export function avatar(name, size = '', imageUrl = '', color = '#4f46e5') {
+  const style = `--avatar-color:${esc(color || '#4f46e5')}`;
+  return imageUrl
+    ? `<img class="avatar ${size}" src="${esc(imageUrl)}" alt="Foto de ${esc(name)}" style="${style}">`
+    : `<span class="avatar ${size}" style="${style}">${esc(initials(name))}</span>`;
 }
 
-export function calendarCells(monthDate, tasks) {
+export function calendarCells(monthDate, tasks, announcements = []) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
   const first = new Date(year, month, 1);
@@ -95,10 +105,16 @@ export function calendarCells(monthDate, tasks) {
       const due = new Date(task.due_at);
       return due.getFullYear() === day.getFullYear() && due.getMonth() === day.getMonth() && due.getDate() === day.getDate();
     });
+    const dayAnnouncements = announcements.filter(item => {
+      if (!item.event_at) return false;
+      const event = new Date(item.event_at);
+      return event.getFullYear() === day.getFullYear() && event.getMonth() === day.getMonth() && event.getDate() === day.getDate();
+    });
     cells.push(`<div class="calendar-day ${day.getMonth() !== month ? 'outside' : ''} ${day.toDateString() === todayKey ? 'today' : ''}">
       <span class="day-number">${day.getDate()}</span>
       ${dayTasks.slice(0, 3).map(task => `<button class="calendar-task" data-task-id="${esc(task.id)}" style="border-color:${esc(task.class_color || '#6366f1')}">${esc(task.title)}</button>`).join('')}
-      ${dayTasks.length > 3 ? `<small class="muted">+${dayTasks.length - 3} más</small>` : ''}
+      ${dayAnnouncements.slice(0, Math.max(0, 3 - dayTasks.length)).map(item => `<button class="calendar-task announcement-event" data-announcement-id="${esc(item.id)}">Aviso · ${esc(item.body)}</button>`).join('')}
+      ${dayTasks.length + dayAnnouncements.length > 3 ? `<small class="muted">+${dayTasks.length + dayAnnouncements.length - 3} más</small>` : ''}
     </div>`);
   }
   return cells.join('');

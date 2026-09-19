@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL COLLATE NOCASE UNIQUE,
   password_hash TEXT NOT NULL,
   avatar_url TEXT,
+  avatar_color TEXT NOT NULL DEFAULT '#4f46e5',
+  accent_color TEXT NOT NULL DEFAULT '#4f46e5',
   timezone TEXT NOT NULL DEFAULT 'America/Mexico_City',
   theme TEXT NOT NULL DEFAULT 'system' CHECK (theme IN ('light', 'dark', 'system')),
   email_notifications INTEGER NOT NULL DEFAULT 1 CHECK (email_notifications IN (0, 1)),
@@ -183,6 +185,30 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS announcements (
+  id TEXT PRIMARY KEY,
+  group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  body TEXT NOT NULL CHECK (length(body) BETWEEN 1 AND 4000),
+  event_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS announcement_reminders (
+  id TEXT PRIMARY KEY,
+  announcement_id TEXT NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  remind_at TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'scheduled', 'sent', 'failed', 'cancelled')),
+  provider_email_id TEXT,
+  last_error TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (announcement_id, user_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_members_user ON group_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_semesters_group ON semesters(group_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_classes_group ON classes(group_id, deleted_at);
@@ -197,9 +223,14 @@ CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(status, remind_at);
 CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_email_notifications_task ON email_notifications(task_id);
 CREATE INDEX IF NOT EXISTS idx_activity_group ON activity_logs(group_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcements_group ON announcements(group_id, event_at, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcement_reminders_user ON announcement_reminders(user_id, status);
 
 INSERT OR IGNORE INTO schema_migrations (version, name)
 VALUES (1, 'initial_v2_schema');
 
 INSERT OR IGNORE INTO schema_migrations (version, name)
 VALUES (2, 'email_notifications');
+
+INSERT OR IGNORE INTO schema_migrations (version, name)
+VALUES (3, 'announcements_and_profile_customization');

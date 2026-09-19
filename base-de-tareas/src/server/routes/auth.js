@@ -23,6 +23,9 @@ const registerSchema = z.object({
   password: passwordSchema,
   timezone: z.string().trim().min(1).max(80).default('America/Mexico_City'),
 });
+const colorSchema = z.string().regex(/^#[0-9a-f]{6}$/i);
+const dataImageSchema = z.string().max(450_000).regex(/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/);
+const avatarSchema = z.union([httpUrlSchema, dataImageSchema, z.literal(''), z.null()]);
 
 router.post('/register', authLimiter, asyncRoute(async (req, res) => {
   const input = parse(registerSchema, req.body);
@@ -37,6 +40,8 @@ router.post('/register', authLimiter, asyncRoute(async (req, res) => {
     name: input.name,
     email: input.email,
     avatar_url: null,
+    avatar_color: '#4f46e5',
+    accent_color: '#4f46e5',
     timezone: input.timezone,
     theme: 'system',
     email_notifications: 1,
@@ -54,7 +59,7 @@ router.post('/register', authLimiter, asyncRoute(async (req, res) => {
 router.post('/login', authLimiter, asyncRoute(async (req, res) => {
   const input = parse(z.object({ email: emailSchema, password: z.string().min(1).max(128) }), req.body);
   const result = await getDb().execute({
-    sql: `SELECT id, name, email, password_hash, avatar_url, timezone, theme,
+    sql: `SELECT id, name, email, password_hash, avatar_url, avatar_color, accent_color, timezone, theme,
                  email_notifications, token_version
           FROM users WHERE email = ? COLLATE NOCASE AND deleted_at IS NULL`,
     args: [input.email],
@@ -86,7 +91,9 @@ router.get('/me', asyncRoute(requireUser), asyncRoute(async (req, res) => {
 
 const profileSchema = z.object({
   name: nameSchema.optional(),
-  avatar_url: z.union([httpUrlSchema, z.literal(''), z.null()]).optional(),
+  avatar_url: avatarSchema.optional(),
+  avatar_color: colorSchema.optional(),
+  accent_color: colorSchema.optional(),
   timezone: z.string().trim().min(1).max(80).optional(),
   theme: z.enum(['light', 'dark', 'system']).optional(),
   email_notifications: z.boolean().optional(),
@@ -97,6 +104,8 @@ router.patch('/me', asyncRoute(requireUser), asyncRoute(async (req, res) => {
   const updated = {
     name: input.name ?? req.user.name,
     avatar_url: input.avatar_url === '' ? null : (input.avatar_url ?? req.user.avatar_url),
+    avatar_color: input.avatar_color ?? req.user.avatar_color,
+    accent_color: input.accent_color ?? req.user.accent_color,
     timezone: input.timezone ?? req.user.timezone,
     theme: input.theme ?? req.user.theme,
     email_notifications: input.email_notifications === undefined
@@ -104,9 +113,9 @@ router.patch('/me', asyncRoute(requireUser), asyncRoute(async (req, res) => {
       : Number(input.email_notifications),
   };
   await getDb().execute({
-    sql: `UPDATE users SET name = ?, avatar_url = ?, timezone = ?, theme = ?,
+    sql: `UPDATE users SET name = ?, avatar_url = ?, avatar_color = ?, accent_color = ?, timezone = ?, theme = ?,
           email_notifications = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-    args: [updated.name, updated.avatar_url, updated.timezone, updated.theme, updated.email_notifications, req.user.id],
+    args: [updated.name, updated.avatar_url, updated.avatar_color, updated.accent_color, updated.timezone, updated.theme, updated.email_notifications, req.user.id],
   });
   res.json({ user: { ...req.user, ...updated } });
 }));

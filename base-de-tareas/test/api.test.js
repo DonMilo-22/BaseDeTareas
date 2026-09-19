@@ -35,7 +35,7 @@ beforeAll(async () => {
 describe('Base de Tareas v2 API', () => {
   it('reports a healthy database', async () => {
     const response = await request(app).get('/api/health').expect(200);
-    expect(response.body).toMatchObject({ ok: true, version: '2.0.0' });
+    expect(response.body).toMatchObject({ ok: true, version: '2.1.0' });
   });
 
   it('registers users without allowing role selection', async () => {
@@ -45,6 +45,18 @@ describe('Base de Tareas v2 API', () => {
     const me = await admin.get('/api/auth/me').expect(200);
     expect(me.body.groups).toEqual([]);
     expect(me.body.user).not.toHaveProperty('password_hash');
+  });
+
+  it('stores profile photos and personal colors', async () => {
+    const avatar = 'data:image/jpeg;base64,aGVsbG8=';
+    const updated = await admin.patch('/api/auth/me').send({
+      avatar_url: avatar,
+      avatar_color: '#0f766e',
+      accent_color: '#db2777',
+    }).expect(200);
+    expect(updated.body.user).toMatchObject({ avatar_url: avatar, avatar_color: '#0f766e', accent_color: '#db2777' });
+    const me = await admin.get('/api/auth/me').expect(200);
+    expect(me.body.user.accent_color).toBe('#db2777');
   });
 
   it('keeps prefixed IDs from the previous production app usable', async () => {
@@ -159,6 +171,25 @@ describe('Base de Tareas v2 API', () => {
     const detail = await admin.get(`/api/groups/${groupId}/tasks/${taskId}`).expect(200);
     expect(detail.body.comments[0].id).toBe(commentId);
     expect(detail.body.reminders[0].id).toBe(reminderId);
+    await admin.delete(`/api/groups/${groupId}/tasks/${taskId}/reminders/${reminderId}`).expect(204);
+    const cancelled = await admin.get(`/api/groups/${groupId}/tasks/${taskId}`).expect(200);
+    expect(cancelled.body.reminders).toHaveLength(0);
+  });
+
+  it('publishes announcements with calendar dates and personal email reminders', async () => {
+    const eventAt = new Date(Date.now() + 3 * 86400000).toISOString();
+    const remindAt = new Date(Date.now() + 2 * 86400000).toISOString();
+    const created = await member.post(`/api/groups/${groupId}/announcements`).send({
+      body: 'El martes traer libreta y lápiz.',
+      event_at: eventAt,
+      remind_at: remindAt,
+    }).expect(201);
+    expect(created.body.announcement.reminder_status).toBe('scheduled');
+    const announcementId = created.body.announcement.id;
+    const list = await member.get(`/api/groups/${groupId}/announcements`).expect(200);
+    expect(list.body.announcements[0]).toMatchObject({ id: announcementId, event_at: eventAt });
+    await member.delete(`/api/groups/${groupId}/announcements/${announcementId}/reminder`).expect(204);
+    await member.delete(`/api/groups/${groupId}/announcements/${announcementId}`).expect(204);
   });
 
   it('queues distant reminders and schedules them through the protected cron', async () => {
@@ -220,5 +251,19 @@ describe('Base de Tareas v2 API', () => {
     await admin.post(`/api/groups/${groupId}/tasks/${taskId}/restore`).expect(200);
     const tasks = await admin.get(`/api/groups/${groupId}/tasks`).expect(200);
     expect(tasks.body.tasks.some(item => item.id === taskId)).toBe(true);
+  });
+
+  it('permanently deletes a task from trash', async () => {
+    await member.delete(`/api/groups/${groupId}/tasks/${taskId}`).expect(204);
+    await member.delete(`/api/groups/${groupId}/trash/tasks/${taskId}`).expect(204);
+    const trash = await member.get(`/api/groups/${groupId}/trash`).expect(200);
+    expect(trash.body.items.some(item => item.id === taskId)).toBe(false);
+  });
+
+  it('lets a member leave a group while preserving the last administrator', async () => {
+    await member.delete(`/api/groups/${groupId}/members/${(await member.get('/api/auth/me')).body.user.id}`).expect(204);
+    const members = await admin.get(`/api/groups/${groupId}/members`).expect(200);
+    expect(members.body.members.some(item => item.name === 'Estudiante')).toBe(false);
+    await admin.delete(`/api/groups/${groupId}/members/${adminUserId}`).expect(409);
   });
 });

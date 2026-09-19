@@ -50,7 +50,7 @@ export async function optionalUser(req) {
       audience: 'base-de-tareas-web',
     });
     const result = await getDb().execute({
-      sql: `SELECT id, name, email, avatar_url, timezone, theme, email_notifications, token_version
+      sql: `SELECT id, name, email, avatar_url, avatar_color, accent_color, timezone, theme, email_notifications, token_version
             FROM users WHERE id = ? AND deleted_at IS NULL`,
       args: [payload.sub],
     });

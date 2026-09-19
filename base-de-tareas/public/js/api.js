@@ -46,6 +46,7 @@ export const api = {
   members: id => request(groupPath(id, '/members')),
   updateRole: (id, userId, role) => request(groupPath(id, `/members/${userId}`), json('PATCH', { role })),
   removeMember: (id, userId) => request(groupPath(id, `/members/${userId}`), { method: 'DELETE' }),
+  leaveGroup: (id, userId) => request(groupPath(id, `/members/${userId}`), { method: 'DELETE' }),
 
   classes: id => request(groupPath(id, '/classes')),
   createClass: (id, data) => request(groupPath(id, '/classes'), json('POST', data)),
@@ -71,6 +72,13 @@ export const api = {
 
   activity: id => request(groupPath(id, '/activity')),
   trash: id => request(groupPath(id, '/trash')),
+  purgeTask: (id, taskId) => request(groupPath(id, `/trash/tasks/${taskId}`), { method: 'DELETE' }),
+  announcements: id => request(groupPath(id, '/announcements')),
+  createAnnouncement: (id, data) => request(groupPath(id, '/announcements'), json('POST', data)),
+  updateAnnouncement: (id, announcementId, data) => request(groupPath(id, `/announcements/${announcementId}`), json('PATCH', data)),
+  deleteAnnouncement: (id, announcementId) => request(groupPath(id, `/announcements/${announcementId}`), { method: 'DELETE' }),
+  addAnnouncementReminder: (id, announcementId, remind_at) => request(groupPath(id, `/announcements/${announcementId}/reminder`), json('POST', { remind_at })),
+  deleteAnnouncementReminder: (id, announcementId) => request(groupPath(id, `/announcements/${announcementId}/reminder`), { method: 'DELETE' }),
   semesters: id => request(groupPath(id, '/semesters')),
   exportUrl: (id, format) => groupPath(id, `/export?format=${format}`),
 };

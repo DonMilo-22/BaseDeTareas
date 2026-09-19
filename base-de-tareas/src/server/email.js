@@ -63,6 +63,18 @@ function taskCard(task) {
   };
 }
 
+function announcementCard(announcement) {
+  const url = `${config.appUrl}/?group=${encodeURIComponent(announcement.group_id)}#announcements`;
+  return {
+    url,
+    html: `<div style="padding:20px;border:1px solid #e4e7ec;border-radius:14px">
+      <strong>Aviso del grupo</strong>
+      <p style="white-space:pre-wrap;color:#344054">${escapeHtml(announcement.body)}</p>
+      ${announcement.event_at ? `<p style="margin-bottom:0;color:#667085">Fecha: ${escapeHtml(announcement.event_at)}</p>` : ''}
+    </div>`,
+  };
+}
+
 export async function sendTaskCreatedNotifications({ task, recipients, creatorName }) {
   const targets = resolveEmailRecipients(recipients);
   const results = [];
@@ -129,10 +141,36 @@ export async function scheduleReminderEmail({ reminderId, to, userName, task, re
   });
 }
 
+export async function scheduleAnnouncementReminderEmail({ reminderId, to, userName, announcement, remindAt }) {
+  const [recipient] = resolveEmailRecipients([{ id: 'personal', name: userName, email: to }]);
+  if (!recipient) throw new AppError(400, 'El correo no es válido para recibir recordatorios.', 'INVALID_EMAIL');
+  const card = announcementCard(announcement);
+  return sendEmail({
+    to: recipient.email,
+    subject: 'Recordatorio de un aviso del grupo',
+    scheduledAt: remindAt,
+    idempotencyKey: `announcement-reminder-${reminderId}`,
+    text: `Hola ${userName}. Este es tu recordatorio: ${announcement.body}${announcement.event_at ? ` Fecha: ${announcement.event_at}.` : ''} ${card.url}`,
+    html: `<div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:auto;color:#172033">
+      <p style="color:#667085">Base de Tareas</p><h1 style="font-size:24px">Hola, ${escapeHtml(userName)}</h1>
+      <p>Este es el recordatorio que programaste para un aviso:</p>${card.html}
+      <p><a href="${card.url}" style="display:inline-block;padding:12px 18px;background:#4f46e5;color:white;text-decoration:none;border-radius:10px">Ver anuncios</a></p>
+    </div>`,
+  });
+}
+
 export async function cancelReminderEmail(providerEmailId) {
-  if (!providerEmailId || process.env.NODE_ENV === 'test') return;
-  if (!config.resendApiKey) return;
-  const resend = new Resend(config.resendApiKey);
-  const { error } = await resend.emails.cancel(providerEmailId);
-  if (error) throw new AppError(502, 'No se pudo cancelar el correo programado.', 'EMAIL_PROVIDER_ERROR');
+  if (!providerEmailId || process.env.NODE_ENV === 'test' || !config.resendApiKey) return true;
+  try {
+    const resend = new Resend(config.resendApiKey);
+    const { error } = await resend.emails.cancel(providerEmailId);
+    if (error) {
+      console.warn('Resend no permitió cancelar un correo; se ocultará localmente.', error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.warn('No se pudo cancelar el correo en Resend; se ocultará localmente.', error);
+    return false;
+  }
 }

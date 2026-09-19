@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { getDb } from '../db.js';
 import {
   resolveEmailRecipients,
+  scheduleAnnouncementReminderEmail,
   scheduleReminderEmail,
   sendAutomaticDueReminder,
 } from '../email.js';
@@ -24,6 +25,11 @@ router.get('/reminders', requireCron, asyncRoute(async (_req, res) => {
   const horizon = new Date(now.getTime() + scheduleWindowMs).toISOString();
   const expired = await getDb().execute({
     sql: `UPDATE reminders SET status = 'failed', last_error = 'La fecha del recordatorio ya pasó.',
+          updated_at = CURRENT_TIMESTAMP WHERE status = 'pending' AND remind_at <= ?`,
+    args: [now.toISOString()],
+  });
+  await getDb().execute({
+    sql: `UPDATE announcement_reminders SET status = 'failed', last_error = 'La fecha del recordatorio ya pasó.',
           updated_at = CURRENT_TIMESTAMP WHERE status = 'pending' AND remind_at <= ?`,
     args: [now.toISOString()],
   });
@@ -68,6 +74,48 @@ router.get('/reminders', requireCron, asyncRoute(async (_req, res) => {
       failed += 1;
       await getDb().execute({
         sql: `UPDATE reminders SET attempts = attempts + 1, last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        args: [String(error.message || error).slice(0, 500), item.id],
+      });
+    }
+  }
+
+  const announcementResult = await getDb().execute({
+    sql: `SELECT r.id, r.remind_at, u.email, u.name AS user_name,
+                 a.id AS announcement_id, a.group_id, a.body, a.event_at
+          FROM announcement_reminders r
+          JOIN users u ON u.id = r.user_id
+          JOIN announcements a ON a.id = r.announcement_id
+          WHERE r.status = 'pending' AND r.remind_at > ? AND r.remind_at <= ?
+            AND u.deleted_at IS NULL AND u.email_notifications = 1 AND a.deleted_at IS NULL
+          ORDER BY r.remind_at LIMIT 100`,
+    args: [now.toISOString(), horizon],
+  });
+  let announcementScheduled = 0;
+  let announcementFailed = 0;
+  for (const item of announcementResult.rows) {
+    try {
+      const providerEmailId = await scheduleAnnouncementReminderEmail({
+        reminderId: item.id,
+        to: item.email,
+        userName: item.user_name,
+        announcement: {
+          id: item.announcement_id,
+          group_id: item.group_id,
+          body: item.body,
+          event_at: item.event_at,
+        },
+        remindAt: item.remind_at,
+      });
+      await getDb().execute({
+        sql: `UPDATE announcement_reminders SET status = 'scheduled', provider_email_id = ?,
+              last_error = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending'`,
+        args: [providerEmailId, item.id],
+      });
+      announcementScheduled += 1;
+    } catch (error) {
+      announcementFailed += 1;
+      await getDb().execute({
+        sql: `UPDATE announcement_reminders SET last_error = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         args: [String(error.message || error).slice(0, 500), item.id],
       });
     }
@@ -143,6 +191,7 @@ router.get('/reminders', requireCron, asyncRoute(async (_req, res) => {
     failed,
     expired: Number(expired.rowsAffected),
     personal: { queued: result.rows.length, scheduled, failed, expired: Number(expired.rowsAffected) },
+    announcements: { queued: announcementResult.rows.length, scheduled: announcementScheduled, failed: announcementFailed },
     automatic: {
       tasks_due_soon: new Set(dueSoon.rows.map(item => item.id)).size,
       sent: automaticSent,
