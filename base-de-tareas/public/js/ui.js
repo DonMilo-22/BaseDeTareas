@@ -1,167 +1,105 @@
-// ==========================================================================
-// BASE DE TAREAS - UTILIDADES DE UI, TOASTS, FECHAS Y MODALES
-// ==========================================================================
+export const esc = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
+}[char]));
 
-export const UI = {
-  // Inicializar Lucide Icons
-  refreshIcons() {
-    if (window.lucide && typeof window.lucide.createIcons === 'function') {
-      window.lucide.createIcons();
-    }
-  },
+export const initials = name => String(name || 'U').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
 
-  // Mostrar Notificación Toast
-  showToast(message, type = 'info', duration = 3500) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
+export const roleLabel = role => ({ admin: 'Administrador', manager: 'Gestor', member: 'Miembro' }[role] || 'Miembro');
 
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
+export const isManager = group => ['admin', 'manager'].includes(group?.role);
 
-    let iconName = 'info';
-    if (type === 'success') iconName = 'check-circle';
-    if (type === 'error') iconName = 'alert-circle';
-    if (type === 'warning') iconName = 'alert-triangle';
+export function dateTime(value, options = {}) {
+  if (!value) return 'Sin fecha';
+  return new Intl.DateTimeFormat('es-MX', {
+    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', ...options,
+  }).format(new Date(value));
+}
 
-    toast.innerHTML = `
-      <i data-lucide="${iconName}" class="toast-icon"></i>
-      <div class="toast-text">${message}</div>
-    `;
+export function dateInput(value) {
+  const date = value ? new Date(value) : new Date(Date.now() + 86400000);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
 
-    container.appendChild(toast);
-    this.refreshIcons();
+export function relativeDate(value) {
+  const target = new Date(value);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const days = Math.round((targetDay - today) / 86400000);
+  if (days === 0) return `Hoy · ${target.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' })}`;
+  if (days === 1) return `Mañana · ${target.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' })}`;
+  if (days === -1) return 'Ayer';
+  if (days > 1 && days < 7) return `En ${days} días`;
+  if (days < 0) return `Hace ${Math.abs(days)} días`;
+  return dateTime(value, { year: target.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
 
-    setTimeout(() => {
-      toast.style.opacity = '0';
-      toast.style.transform = 'translateX(50px)';
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
-  },
-
-  // Abrir Modal
-  openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-      modal.classList.add('active');
-      modal.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-      this.refreshIcons();
-    }
-  },
-
-  // Cerrar Modal
-  closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-      modal.classList.remove('active');
-      modal.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
-    }
-  },
-
-  // Cerrar Todos los Modales
-  closeAllModals() {
-    document.querySelectorAll('.modal-overlay').forEach(modal => {
-      modal.classList.remove('active');
-      modal.setAttribute('aria-hidden', 'true');
-    });
-    document.body.style.overflow = '';
-  },
-
-  // Visor Lightbox para imágenes
-  openLightbox(src) {
-    const img = document.getElementById('lightbox-img');
-    if (img) {
-      img.src = src;
-      this.openModal('modal-lightbox');
-    }
-  },
-
-  // Formato de Fecha y Hora en Español (ej: "Vie 5 Sep, 11:59 PM")
-  formatDateTime(dateStr) {
-    if (!dateStr) return 'Sin fecha';
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  },
-
-  // Formato para input datetime-local (YYYY-MM-DDTHH:mm)
-  formatForInput(dateStr) {
-    const d = dateStr ? new Date(dateStr) : new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  },
-
-  // Formato de Vencimiento relativo para Badges (ej: "Vence hoy", "Faltan 2 días", "Atrasada")
-  getDueBadgeInfo(dueDateStr, isCompleted = false) {
-    if (!dueDateStr) return { text: 'Sin fecha', class: 'due-normal' };
-    if (isCompleted) return { text: 'Entregada', class: 'due-normal' };
-
-    const now = new Date();
-    const due = new Date(dueDateStr);
-    const diffMs = due.getTime() - now.getTime();
-    const diffHours = diffMs / (1000 * 60 * 60);
-    const diffDays = Math.ceil(diffHours / 24);
-
-    if (diffMs < 0) {
-      const daysAgo = Math.abs(diffDays);
-      return {
-        text: `⚠️ Atrasada por ${daysAgo === 0 ? 'horas' : `${daysAgo}d`}`,
-        class: 'due-urgent',
-      };
-    }
-
-    if (diffHours <= 24) {
-      const hoursLeft = Math.max(1, Math.round(diffHours));
-      return {
-        text: `⏳ Vence hoy (${hoursLeft}h)`,
-        class: 'due-today',
-      };
-    }
-
-    if (diffDays === 1) {
-      return {
-        text: '⏳ Vence mañana',
-        class: 'due-today',
-      };
-    }
-
-    if (diffDays <= 3) {
-      return {
-        text: `⏳ Faltan ${diffDays} días`,
-        class: 'due-normal',
-      };
-    }
-
-    return {
-      text: `📅 ${due.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`,
-      class: 'due-normal',
-    };
-  },
-
-  // Formato de Tiempo Relativo (ej: "Hace 5 minutos", "Ayer a las 14:00")
-  formatRelativeTime(dateStr) {
-    if (!dateStr) return '';
-    const now = new Date();
-    const past = new Date(dateStr);
-    const diffSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
-
-    if (diffSeconds < 60) return 'Hace un momento';
-    const diffMinutes = Math.floor(diffSeconds / 60);
-    if (diffMinutes < 60) return `Hace ${diffMinutes} min`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `Hace ${diffHours} h`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return `Ayer a las ${past.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
-    if (diffDays < 7) return `Hace ${diffDays} días`;
-
-    return past.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+export function toast(message, type = 'info', action) {
+  const region = document.getElementById('toast-region');
+  const item = document.createElement('div');
+  item.className = `toast ${type}`;
+  const icon = type === 'error' ? '!' : type === 'success' ? '✓' : 'i';
+  item.innerHTML = `<strong>${icon}</strong><span>${esc(message)}</span><button aria-label="Cerrar">×</button>`;
+  if (action) {
+    const button = item.querySelector('button');
+    button.textContent = action.label;
+    button.addEventListener('click', () => { action.run(); item.remove(); });
+  } else {
+    item.querySelector('button').addEventListener('click', () => item.remove());
   }
-};
+  region.append(item);
+  setTimeout(() => item.remove(), action ? 7000 : 4200);
+}
+
+export function taskRow(task) {
+  const overdue = !Number(task.completed) && new Date(task.due_at) < new Date();
+  return `
+    <article class="task-row ${Number(task.completed) ? 'is-complete' : ''}" data-task-id="${esc(task.id)}">
+      <button class="task-check ${Number(task.completed) ? 'checked' : ''}" data-action="toggle-task" data-task-id="${esc(task.id)}" data-completed="${Number(task.completed) ? '1' : '0'}" aria-label="${Number(task.completed) ? 'Marcar pendiente' : 'Marcar completada'}">${Number(task.completed) ? '✓' : ''}</button>
+      <div class="task-main">
+        <strong>${esc(task.title)}</strong>
+        <small><span class="dot" style="background:${esc(task.class_color || '#6366f1')}"></span>${esc(task.class_name)}${task.topic_name ? ` · ${esc(task.topic_name)}` : ''}</small>
+      </div>
+      <div class="task-meta">
+        ${Number(task.is_important) ? '<span class="pill important">Importante</span>' : ''}
+        <time class="${overdue ? 'overdue' : ''}">${esc(relativeDate(task.due_at))}</time>
+      </div>
+    </article>`;
+}
+
+export function emptyState(icon, title, description, action = '') {
+  return `<div class="empty-state"><span class="empty-icon">${icon}</span><h2>${esc(title)}</h2><p>${esc(description)}</p>${action}</div>`;
+}
+
+export function pageHead(eyebrow, title, subtitle, actions = '') {
+  return `<header class="page-head"><div><span class="eyebrow">${esc(eyebrow)}</span><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="page-actions">${actions}</div></header>`;
+}
+
+export function avatar(name, size = '') {
+  return `<span class="avatar ${size}">${esc(initials(name))}</span>`;
+}
+
+export function calendarCells(monthDate, tasks) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const first = new Date(year, month, 1);
+  const mondayIndex = (first.getDay() + 6) % 7;
+  const start = new Date(year, month, 1 - mondayIndex);
+  const todayKey = new Date().toDateString();
+  const cells = [];
+  for (let index = 0; index < 42; index += 1) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + index);
+    const dayTasks = tasks.filter(task => {
+      const due = new Date(task.due_at);
+      return due.getFullYear() === day.getFullYear() && due.getMonth() === day.getMonth() && due.getDate() === day.getDate();
+    });
+    cells.push(`<div class="calendar-day ${day.getMonth() !== month ? 'outside' : ''} ${day.toDateString() === todayKey ? 'today' : ''}">
+      <span class="day-number">${day.getDate()}</span>
+      ${dayTasks.slice(0, 3).map(task => `<button class="calendar-task" data-task-id="${esc(task.id)}" style="border-color:${esc(task.class_color || '#6366f1')}">${esc(task.title)}</button>`).join('')}
+      ${dayTasks.length > 3 ? `<small class="muted">+${dayTasks.length - 3} más</small>` : ''}
+    </div>`);
+  }
+  return cells.join('');
+}
