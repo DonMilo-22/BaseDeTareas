@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireUser } from '../auth.js';
 import { logActivity } from '../activity.js';
 import { getDb } from '../db.js';
+import { sendTaskCreatedNotifications } from '../email.js';
 import { notFound } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
 import { requireMembership } from '../permissions.js';
@@ -79,7 +80,33 @@ router.post('/', asyncRoute(async (req, res) => {
   for (const [position, title] of input.subtasks.entries()) statements.push({ sql: 'INSERT INTO subtasks (id, task_id, title, position, created_by) VALUES (?, ?, ?, ?, ?)', args: [randomUUID(), taskId, title, position, req.user.id] });
   await getDb().batch(statements, 'write');
   await logActivity({ groupId, userId: req.user.id, action: 'task.created', entityType: 'task', entityId: taskId, summary: `Creó la tarea ${input.title}.` });
-  res.status(201).json({ task: { id: taskId, group_id: groupId, ...input } });
+  let emailNotification = { attempted: 0, sent: 0, failed: 0 };
+  try {
+    const recipients = await getDb().execute({
+      sql: `SELECT u.id, u.name, u.email
+            FROM group_members gm JOIN users u ON u.id = gm.user_id
+            WHERE gm.group_id = ? AND u.deleted_at IS NULL AND u.email_notifications = 1`,
+      args: [groupId],
+    });
+    const classResult = await getDb().execute({
+      sql: 'SELECT name FROM classes WHERE id = ? AND group_id = ?',
+      args: [input.class_id, groupId],
+    });
+    const notification = await sendTaskCreatedNotifications({
+      task: { id: taskId, group_id: groupId, ...input, class_name: classResult.rows[0]?.name || 'Materia' },
+      recipients: recipients.rows,
+      creatorName: req.user.name,
+    });
+    emailNotification = {
+      attempted: notification.attempted,
+      sent: notification.sent,
+      failed: notification.failed,
+    };
+  } catch (error) {
+    console.error('La tarea se creó, pero el aviso por correo falló:', error);
+    emailNotification.failed += 1;
+  }
+  res.status(201).json({ task: { id: taskId, group_id: groupId, ...input }, email_notification: emailNotification });
 }));
 
 router.get('/:taskId', asyncRoute(async (req, res) => {

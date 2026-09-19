@@ -159,6 +159,18 @@ CREATE TABLE IF NOT EXISTS reminders (
   UNIQUE (task_id, user_id, remind_at, channel)
 );
 
+CREATE TABLE IF NOT EXISTS email_notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  notification_type TEXT NOT NULL,
+  recipient_email TEXT NOT NULL,
+  provider_id TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_at TEXT,
+  UNIQUE (task_id, user_id, notification_type)
+);
+
 CREATE TABLE IF NOT EXISTS activity_logs (
   id TEXT PRIMARY KEY,
   group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -183,7 +195,11 @@ CREATE INDEX IF NOT EXISTS idx_comments_task ON task_comments(task_id, deleted_a
 CREATE INDEX IF NOT EXISTS idx_attachments_task ON task_attachments(task_id);
 CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(status, remind_at);
 CREATE INDEX IF NOT EXISTS idx_reminders_user ON reminders(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_email_notifications_task ON email_notifications(task_id);
 CREATE INDEX IF NOT EXISTS idx_activity_group ON activity_logs(group_id, created_at DESC);
 
 INSERT OR IGNORE INTO schema_migrations (version, name)
 VALUES (1, 'initial_v2_schema');
+
+INSERT OR IGNORE INTO schema_migrations (version, name)
+VALUES (2, 'email_notifications');

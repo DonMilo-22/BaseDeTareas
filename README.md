@@ -8,12 +8,12 @@ viven en Turso.
 ## Funciones
 
 - Grupos privados mediante código de invitación.
-- Roles `admin`, `manager` y `member` comprobados por el servidor.
+- Roles de Administrador, Gestor y Alumno comprobados por el servidor.
 - Materias, temas, tareas, pasos, comentarios y enlaces adjuntos.
 - Progreso independiente para cada integrante.
 - Dashboard, búsqueda, filtros, calendario y exportaciones CSV, ICS y JSON.
 - Papelera recuperable e historial de actividad.
-- Recordatorios personales por correo mediante Resend.
+- Avisos al crear tareas, recordatorios automáticos de 24 horas y recordatorios personales mediante Resend.
 - Tema claro/oscuro, navegación móvil y aplicación web instalable (PWA).
 
 Nadie elige un rol privilegiado al registrarse. Quien crea un grupo se convierte en su primer
@@ -34,8 +34,9 @@ base-de-tareas/
 
 ## Preparar Turso
 
-Esta versión necesita una base nueva; el esquema anterior no es compatible. Crea una base vacía y
-no apuntes el despliegue actual a ella hasta terminar la configuración.
+El esquema conserva las tablas de grupos utilizadas originalmente por el proyecto y puede aplicarse
+sobre la base existente de forma idempotente. No elimina cuentas, grupos, materias ni tareas.
+Para una instalación nueva también puedes crear una base vacía:
 
 ```bash
 turso db create base-de-tareas-v2
@@ -76,21 +77,24 @@ Configura un dominio verificado en Resend y estas variables:
 ```env
 RESEND_API_KEY=re_...
 EMAIL_FROM=Base de Tareas <recordatorios@tu-dominio.com>
+EMAIL_RECIPIENT_OVERRIDE=tu-correo-verificado@ejemplo.com
 APP_URL=https://tu-dominio.vercel.app
 CRON_SECRET=un-secreto-largo-y-aleatorio
 ```
 
-Los correos dentro de los próximos 29 días se programan inmediatamente. Los recordatorios más
-lejanos quedan en cola; el cron diario de Vercel los entrega a Resend al entrar en esa ventana y
-Resend conserva la hora exacta solicitada.
+`RESEND_FROM_EMAIL` también se acepta como alias de `EMAIL_FROM`. Mientras se utiliza
+`onboarding@resend.dev`, `EMAIL_RECIPIENT_OVERRIDE` redirige una sola copia al correo autorizado.
+El cron diario envía recordatorios automáticos de tareas pendientes que vencen en menos de 24 horas.
+Los recordatorios personales dentro de los próximos 29 días se programan inmediatamente; los más
+lejanos quedan en cola hasta entrar en la ventana admitida por Resend.
 
 ## Desplegar en Vercel
 
 1. Importa el repositorio y selecciona `base-de-tareas` como **Root Directory**.
 2. Usa Node.js 22.
 3. Agrega `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `JWT_SECRET`, `APP_URL`, `RESEND_API_KEY`,
-   `EMAIL_FROM` y `CRON_SECRET` para Production y Preview.
-4. Ejecuta `npm run migrate` una vez contra la base nueva.
+   `EMAIL_FROM` (o `RESEND_FROM_EMAIL`), `EMAIL_RECIPIENT_OVERRIDE` y `CRON_SECRET` para Production y Preview.
+4. Ejecuta `npm run migrate` una vez contra la base configurada.
 5. Despliega y verifica con `BASE_URL=https://... npm run smoke`.
 
 La aplicación no crea ni modifica tablas durante una petición web. Si falta la base o un secreto
