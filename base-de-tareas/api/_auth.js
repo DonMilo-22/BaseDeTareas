@@ -1,6 +1,11 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
+import {
+  ensureLegacyGroupForUser,
+  generateId,
+  tableHasColumn,
+} from "./_db.js";
 
 dotenv.config();
 
@@ -44,6 +49,32 @@ export async function comparePassword(password, hash) {
 
 export async function logActivity(db, { userId, actionType, targetType, targetId, targetTitle, details }) {
   try {
+    if (await tableHasColumn("activity_logs", "group_id")) {
+      const groupId = await ensureLegacyGroupForUser(userId);
+      return await db.execute({
+        sql: `INSERT INTO activity_logs
+              (id, group_id, user_id, action, entity_type, entity_id, summary,
+               metadata_json, action_type, target_type, target_id, target_title, details, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        args: [
+          generateId("act"),
+          groupId,
+          String(userId),
+          actionType,
+          targetType,
+          targetId,
+          details || targetTitle || actionType,
+          "{}",
+          actionType,
+          targetType,
+          targetId,
+          targetTitle,
+          details,
+          new Date().toISOString(),
+        ],
+      });
+    }
+
     return await db.execute({
       sql: `INSERT INTO activity_logs (user_id, action_type, target_type, target_id, target_title, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?);`,
       args: [userId, actionType, targetType, targetId, targetTitle, details, new Date().toISOString()],

@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         SELECT t.id, t.title, t.topic, t.description, t.due_date, t.priority,
                c.name AS class_name
         FROM tasks t
-        LEFT JOIN classes c ON CAST(t.class_id AS NUMERIC) = CAST(c.id AS NUMERIC)
+        LEFT JOIN classes c ON CAST(t.class_id AS TEXT) = CAST(c.id AS TEXT)
         WHERE datetime(t.due_date) > datetime(?)
           AND datetime(t.due_date) <= datetime(?)
         ORDER BY datetime(t.due_date) ASC;
