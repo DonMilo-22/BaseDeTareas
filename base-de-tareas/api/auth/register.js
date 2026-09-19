@@ -1,4 +1,4 @@
-import { db, initDatabase } from "../_db.js";
+import { db, generateId, getTableColumns, initDatabase } from "../_db.js";
 import { createToken, hashPassword, logActivity } from "../_auth.js";
 
 export default async function handler(req, res) {
@@ -44,13 +44,28 @@ export default async function handler(req, res) {
     // Avatar por defecto si no se proporcionó
     const defaultAvatar = avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(normalizedName)}`;
 
-    const result = await db.execute({
-      sql: `INSERT INTO users (name, email, password_hash, avatar_url) VALUES (?, ?, ?, ?);`,
-      args: [normalizedName, normalizedEmail, passwordHash, defaultAvatar],
-    });
+    const userColumns = await getTableColumns("users");
+    const userIdColumn = userColumns.find((column) => column.name === "id");
+    const usesTextIds = String(userIdColumn?.type || "").toUpperCase().includes("TEXT");
+    let userId;
+
+    if (usesTextIds) {
+      userId = generateId("usr");
+      await db.execute({
+        sql: `INSERT INTO users (id, name, email, password_hash, avatar_url)
+              VALUES (?, ?, ?, ?, ?);`,
+        args: [userId, normalizedName, normalizedEmail, passwordHash, defaultAvatar],
+      });
+    } else {
+      const result = await db.execute({
+        sql: `INSERT INTO users (name, email, password_hash, avatar_url) VALUES (?, ?, ?, ?);`,
+        args: [normalizedName, normalizedEmail, passwordHash, defaultAvatar],
+      });
+      userId = Number(result.lastInsertRowid);
+    }
 
     const user = {
-      id: Number(result.lastInsertRowid),
+      id: userId,
       name: normalizedName,
       email: normalizedEmail,
       avatar_url: defaultAvatar,
