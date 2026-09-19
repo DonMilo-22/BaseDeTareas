@@ -35,6 +35,10 @@ se considera una medida de seguridad.
 ## Autenticación
 
 - Contraseñas cifradas con bcrypt.
+- Las cuentas nuevas se crean únicamente después de validar un código de seis dígitos enviado por correo.
+- Los códigos se guardan como HMAC, caducan en diez minutos, permiten cinco intentos y solo pueden reenviarse cada 60 segundos.
+- La recuperación de contraseña devuelve siempre una respuesta genérica para no revelar si una cuenta existe.
+- Cambiar la contraseña incrementa `token_version` e invalida todas las sesiones anteriores.
 - Sesión firmada y guardada en cookie `HttpOnly`, `Secure` en producción y `SameSite=Lax`.
 - El JWT contiene únicamente el identificador y la versión de sesión.
 - No hay clave JWT predeterminada: el servidor se niega a iniciar en producción si falta.

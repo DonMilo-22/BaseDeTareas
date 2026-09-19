@@ -28,6 +28,18 @@ export async function ensureRuntimeSchema() {
           name TEXT NOT NULL,
           applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS auth_codes (
+          id TEXT PRIMARY KEY,
+          email TEXT NOT NULL COLLATE NOCASE,
+          purpose TEXT NOT NULL CHECK (purpose IN ('registration', 'password_reset')),
+          code_hash TEXT NOT NULL,
+          payload_json TEXT NOT NULL DEFAULT '{}',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          expires_at TEXT NOT NULL,
+          resend_available_at TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (email, purpose)
+        );
         CREATE TABLE IF NOT EXISTS announcements (
           id TEXT PRIMARY KEY,
           group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -52,8 +64,11 @@ export async function ensureRuntimeSchema() {
         );
         CREATE INDEX IF NOT EXISTS idx_announcements_group ON announcements(group_id, event_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_announcement_reminders_user ON announcement_reminders(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_auth_codes_expiry ON auth_codes(expires_at);
         INSERT OR IGNORE INTO schema_migrations (version, name)
         VALUES (3, 'announcements_and_profile_customization');
+        INSERT OR IGNORE INTO schema_migrations (version, name)
+        VALUES (4, 'email_verification_and_password_reset');
       `);
     })().catch(error => {
       schemaPromise = undefined;
