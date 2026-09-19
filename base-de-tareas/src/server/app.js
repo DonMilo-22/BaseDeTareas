@@ -1,0 +1,60 @@
+import express from 'express';
+import helmet from 'helmet';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import authRoutes from './routes/auth.js';
+import groupRoutes from './routes/groups.js';
+import classRoutes from './routes/classes.js';
+import taskRoutes from './routes/tasks.js';
+import collaborationRoutes from './routes/collaboration.js';
+import reminderRoutes from './routes/reminders.js';
+import extraRoutes from './routes/extras.js';
+import { checkDatabase } from './db.js';
+import { errorHandler, notFoundHandler, requireSameOrigin } from './middleware.js';
+
+const dirname = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.resolve(dirname, '../../public');
+const app = express();
+
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      manifestSrc: ["'self'"],
+    },
+  },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+app.use(requireSameOrigin);
+
+app.get('/api/health', async (_req, res, next) => {
+  try {
+    res.json({ ok: await checkDatabase(), version: '2.0.0' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/groups/:groupId/classes', classRoutes);
+app.use('/api/groups/:groupId/tasks', taskRoutes);
+app.use('/api/groups/:groupId/tasks', collaborationRoutes);
+app.use('/api/groups/:groupId/tasks', reminderRoutes);
+app.use('/api/groups/:groupId', extraRoutes);
+
+app.use('/api', notFoundHandler);
+app.use(express.static(publicDir, { extensions: ['html'], maxAge: '1h' }));
+app.get('*splat', (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+app.use(errorHandler);
+
+export default app;

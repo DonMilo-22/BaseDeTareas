@@ -43,13 +43,13 @@ se considera una medida de seguridad.
 ## Recordatorios
 
 1. El usuario crea un recordatorio ligado a una tarea y una fecha futura.
-2. Vercel Cron llama periódicamente al endpoint protegido `/api/cron/reminders`.
-3. El proceso reclama recordatorios vencidos cambiando su estado a `processing`.
-4. Resend envía el correo.
-5. La fila termina en `sent` o vuelve a `failed` con número de intentos y error resumido.
+2. La API programa el correo directamente con `scheduledAt` de Resend y guarda su identificador.
+3. Resend conserva la programación y envía el mensaje a la hora indicada.
+4. Si el usuario elimina el recordatorio, la API cancela también el correo programado.
 
-El endpoint exige `CRON_SECRET`. `RESEND_API_KEY` y `EMAIL_FROM` habilitan el envío real;
-en pruebas se utiliza un adaptador de correo falso.
+Este diseño evita depender de Vercel Cron: en el plan Hobby solo puede ejecutarse una vez al día
+y no ofrece precisión suficiente para recordatorios por hora. `RESEND_API_KEY` y `EMAIL_FROM`
+habilitan el envío real; en pruebas se utiliza un adaptador de correo falso.
 
 ## Decisiones de datos
 
