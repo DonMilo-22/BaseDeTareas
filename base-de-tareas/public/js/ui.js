@@ -4,7 +4,7 @@ export const esc = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
 
 export const initials = name => String(name || 'U').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
 
-export const roleLabel = role => ({ admin: 'Administrador', manager: 'Gestor', member: 'Miembro' }[role] || 'Miembro');
+export const roleLabel = role => ({ admin: 'Administrador', manager: 'Gestor', member: 'Alumno' }[role] || 'Alumno');
 
 export const isManager = group => ['admin', 'manager'].includes(group?.role);
 

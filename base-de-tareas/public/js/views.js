@@ -13,16 +13,16 @@ export function homeView(state) {
       <article class="summary-card surface"><small>Completadas por ti</small><strong>${Number(summary.completed || 0)} <small>de ${Number(summary.total || 0)}</small></strong></article>
     </section>
     <section class="dashboard-grid">
-      <article class="panel surface">
-        <div class="panel-head"><h2>Próximas entregas</h2><a class="text-link" href="#tasks">Ver todas</a></div>
+      <details class="panel surface collapsible-panel" open>
+        <summary class="panel-head"><h2>Próximas entregas</h2><span class="summary-actions"><a class="text-link" href="#tasks">Ver todas</a><span class="collapse-chevron">⌄</span></span></summary>
         <div class="task-list">${upcoming.length ? upcoming.map(taskRow).join('') : emptyState('✓', 'Todo despejado', 'No tienes entregas próximas ni atrasadas.')}</div>
-      </article>
-      <article class="panel surface">
-        <div class="panel-head"><h2>Actividad reciente</h2><button class="text-link" data-action="show-activity">Ver historial</button></div>
+      </details>
+      <details class="panel surface collapsible-panel" open>
+        <summary class="panel-head"><h2>Actividad reciente</h2><span class="summary-actions"><button class="text-link" data-action="show-activity">Ver historial</button><span class="collapse-chevron">⌄</span></span></summary>
         <div class="activity-list">
           ${(data?.activity || []).length ? data.activity.map(item => `<div class="activity-item">${avatar(item.user_name, 'small')}<div><p>${esc(item.summary)}</p><time>${esc(dateTime(item.created_at))}</time></div></div>`).join('') : '<p class="muted">Todavía no hay movimientos en el grupo.</p>'}
         </div>
-      </article>
+      </details>
     </section>`;
 }
 
@@ -80,7 +80,7 @@ export function teamView(state) {
         <article class="member-card surface">
           <div class="member-card-head">${avatar(member.name, 'large')}<div class="member-meta"><h2>${esc(member.name)}${member.id === state.user.id ? ' <span class="pill">Tú</span>' : ''}</h2><p>${Number(member.completed_tasks || 0)} tareas completadas</p></div></div>
           <div class="setting-row"><div><strong>Permiso</strong><p>${esc(roleLabel(member.role))}</p></div>
-            ${canEdit && member.id !== state.user.id ? `<div class="inline-actions"><select class="role-select" data-action="change-role" data-user-id="${esc(member.id)}"><option value="member" ${member.role === 'member' ? 'selected' : ''}>Miembro</option><option value="manager" ${member.role === 'manager' ? 'selected' : ''}>Gestor</option><option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Administrador</option></select><button class="button ghost small" data-action="remove-member" data-user-id="${esc(member.id)}" data-user-name="${esc(member.name)}">Quitar</button></div>` : `<span class="pill role">${esc(roleLabel(member.role))}</span>`}
+            ${canEdit && member.id !== state.user.id ? `<div class="inline-actions"><select class="role-select" data-action="change-role" data-user-id="${esc(member.id)}"><option value="member" ${member.role === 'member' ? 'selected' : ''}>Alumno</option><option value="manager" ${member.role === 'manager' ? 'selected' : ''}>Gestor</option><option value="admin" ${member.role === 'admin' ? 'selected' : ''}>Administrador</option></select><button class="button ghost small" data-action="remove-member" data-user-id="${esc(member.id)}" data-user-name="${esc(member.name)}">Quitar</button></div>` : `<span class="pill role">${esc(roleLabel(member.role))}</span>`}
           </div>
         </article>`).join('')}
     </section>`;

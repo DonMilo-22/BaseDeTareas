@@ -15,7 +15,7 @@
 | --- | --- |
 | `admin` | Gestionar grupo, roles, semestres, materias y todas las tareas. |
 | `manager` | Gestionar materias y tareas, sin poder ascender administradores ni eliminar el grupo. |
-| `member` | Consultar, completar, comentar y crear recordatorios personales. |
+| `member` (Alumno) | Consultar, completar, comentar y crear recordatorios personales. |
 
 El primer usuario que crea un grupo se convierte en `admin`. Los usuarios nuevos siempre se
 registran como usuarios normales. Solamente un administrador puede cambiar roles y no puede

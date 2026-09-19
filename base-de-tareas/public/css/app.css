@@ -169,6 +169,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); box-sh
 .summary-card strong { font: 700 1.65rem Manrope, sans-serif; }
 .summary-card.danger strong { color: var(--danger); }
 .summary-card.accent strong { color: var(--primary); }
+.collapsible-panel > summary { cursor: pointer; list-style: none; }
+.collapsible-panel > summary::-webkit-details-marker { display: none; }
+.summary-actions { display: inline-flex; align-items: center; gap: 12px; }
+.collapse-chevron { color: var(--muted); transition: transform .18s ease; }
+.collapsible-panel:not([open]) .collapse-chevron { transform: rotate(-90deg); }
+.collapsible-panel:not([open]) > summary { margin-bottom: 0; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .65fr); gap: 18px; }
 .panel { padding: 20px; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
