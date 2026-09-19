@@ -2,9 +2,12 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireUser } from '../auth.js';
+import { logActivity } from '../activity.js';
 import { getDb } from '../db.js';
+import { notFound } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
 import { requireMembership } from '../permissions.js';
+import { cancelTaskReminders } from '../reminder-cleanup.js';
 import { idSchema, parse } from '../validation.js';
 
 const router = Router({ mergeParams: true });
@@ -16,7 +19,7 @@ router.get('/activity', asyncRoute(async (req, res) => {
   const limit = Math.min(100, Math.max(1, Number(req.query.limit || 30)));
   const result = await getDb().execute({
     sql: `SELECT a.id, a.action, a.entity_type, a.entity_id, a.summary, a.metadata_json,
-                 a.created_at, u.name AS user_name, u.avatar_url
+                 a.created_at, u.name AS user_name, u.avatar_url, u.avatar_color
           FROM activity_logs a LEFT JOIN users u ON u.id = a.user_id
           WHERE a.group_id = ? ORDER BY a.created_at DESC LIMIT ?`,
     args: [groupId, limit],
@@ -58,6 +61,30 @@ router.get('/trash', asyncRoute(async (req, res) => {
                                   FROM classes WHERE group_id = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC`, args: [groupId] }),
   ]);
   res.json({ items: [...tasks.rows, ...classes.rows].sort((a, b) => String(b.deleted_at).localeCompare(String(a.deleted_at))) });
+}));
+
+router.delete('/trash/tasks/:taskId', asyncRoute(async (req, res) => {
+  const groupId = parse(idSchema, req.params.groupId);
+  const taskId = parse(idSchema, req.params.taskId);
+  await requireMembership(groupId, req.user.id, 'manager');
+  const result = await getDb().execute({
+    sql: `SELECT title FROM tasks WHERE id = ? AND group_id = ? AND deleted_at IS NOT NULL`,
+    args: [taskId, groupId],
+  });
+  if (!result.rows[0]) throw notFound('Tarea no encontrada en la papelera.');
+  await cancelTaskReminders([taskId]);
+  await getDb().batch([
+    { sql: 'DELETE FROM email_notifications WHERE task_id = ?', args: [taskId] },
+    { sql: 'DELETE FROM reminders WHERE task_id = ?', args: [taskId] },
+    { sql: 'DELETE FROM task_comments WHERE task_id = ?', args: [taskId] },
+    { sql: 'DELETE FROM task_attachments WHERE task_id = ?', args: [taskId] },
+    { sql: 'DELETE FROM subtask_completions WHERE subtask_id IN (SELECT id FROM subtasks WHERE task_id = ?)', args: [taskId] },
+    { sql: 'DELETE FROM subtasks WHERE task_id = ?', args: [taskId] },
+    { sql: 'DELETE FROM task_completions WHERE task_id = ?', args: [taskId] },
+    { sql: 'DELETE FROM tasks WHERE id = ? AND group_id = ?', args: [taskId, groupId] },
+  ], 'write');
+  await logActivity({ groupId, userId: req.user.id, action: 'task.purged', entityType: 'task', entityId: taskId, summary: `Eliminó definitivamente la tarea ${result.rows[0].title}.` });
+  res.status(204).end();
 }));
 
 router.get('/export', asyncRoute(async (req, res) => {

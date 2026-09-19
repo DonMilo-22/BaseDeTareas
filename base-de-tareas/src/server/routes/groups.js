@@ -87,7 +87,7 @@ router.get('/:groupId/members', asyncRoute(async (req, res) => {
   const groupId = parse(idSchema, req.params.groupId);
   const membership = await requireMembership(groupId, req.user.id);
   const result = await getDb().execute({
-    sql: `SELECT u.id, u.name, u.avatar_url, gm.role, gm.joined_at,
+    sql: `SELECT u.id, u.name, u.avatar_url, u.avatar_color, gm.role, gm.joined_at,
                  (SELECT COUNT(*) FROM task_completions tc
                   JOIN tasks t ON t.id = tc.task_id
                   WHERE tc.user_id = u.id AND t.group_id = ? AND t.deleted_at IS NULL) AS completed_tasks
@@ -124,6 +124,14 @@ router.delete('/:groupId/members/:userId', asyncRoute(async (req, res) => {
     const admins = await getDb().execute({ sql: `SELECT COUNT(*) AS count FROM group_members WHERE group_id = ? AND role = 'admin'`, args: [groupId] });
     if (Number(admins.rows[0].count) <= 1) throw new AppError(409, 'Transfiere la administración antes de salir.', 'LAST_ADMIN');
   }
+  await logActivity({
+    groupId,
+    userId: req.user.id,
+    action: userId === req.user.id ? 'member.left' : 'member.removed',
+    entityType: 'user',
+    entityId: userId,
+    summary: userId === req.user.id ? 'Salió del grupo.' : 'Retiró a un integrante del grupo.',
+  });
   await getDb().execute({ sql: 'DELETE FROM group_members WHERE group_id = ? AND user_id = ?', args: [groupId, userId] });
   res.status(204).end();
 }));
@@ -154,7 +162,7 @@ router.get('/:groupId/dashboard', asyncRoute(async (req, res) => {
       args: [req.user.id, groupId, week],
     }),
     getDb().execute({
-      sql: `SELECT a.id, a.action, a.summary, a.created_at, u.name AS user_name, u.avatar_url
+      sql: `SELECT a.id, a.action, a.summary, a.created_at, u.name AS user_name, u.avatar_url, u.avatar_color
             FROM activity_logs a LEFT JOIN users u ON u.id = a.user_id
             WHERE a.group_id = ? ORDER BY a.created_at DESC LIMIT 8`,
       args: [groupId],

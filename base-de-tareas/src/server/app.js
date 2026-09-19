@@ -10,8 +10,9 @@ import collaborationRoutes from './routes/collaboration.js';
 import reminderRoutes from './routes/reminders.js';
 import extraRoutes from './routes/extras.js';
 import cronRoutes from './routes/cron.js';
-import { checkDatabase } from './db.js';
-import { errorHandler, notFoundHandler, requireSameOrigin } from './middleware.js';
+import announcementRoutes from './routes/announcements.js';
+import { checkDatabase, ensureRuntimeSchema } from './db.js';
+import { asyncRoute, errorHandler, notFoundHandler, requireSameOrigin } from './middleware.js';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(dirname, '../../public');
@@ -36,10 +37,14 @@ app.use(helmet({
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(requireSameOrigin);
+app.use(asyncRoute(async (_req, _res, next) => {
+  await ensureRuntimeSchema();
+  next();
+}));
 
 app.get('/api/health', async (_req, res, next) => {
   try {
-    res.json({ ok: await checkDatabase(), version: '2.0.0' });
+    res.json({ ok: await checkDatabase(), version: '2.1.0' });
   } catch (error) {
     next(error);
   }
@@ -52,6 +57,7 @@ app.use('/api/groups/:groupId/classes', classRoutes);
 app.use('/api/groups/:groupId/tasks', taskRoutes);
 app.use('/api/groups/:groupId/tasks', collaborationRoutes);
 app.use('/api/groups/:groupId/tasks', reminderRoutes);
+app.use('/api/groups/:groupId/announcements', announcementRoutes);
 app.use('/api/groups/:groupId', extraRoutes);
 
 app.use('/api', notFoundHandler);
