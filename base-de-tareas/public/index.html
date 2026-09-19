@@ -49,6 +49,7 @@
           <div><span class="eyebrow">Bienvenido de vuelta</span><h2>Continúa donde te quedaste</h2></div>
           <label>Correo electrónico<input name="email" type="email" autocomplete="email" required></label>
           <label>Contraseña<input name="password" type="password" autocomplete="current-password" required></label>
+          <button class="auth-link" type="button" data-auth-action="forgot">¿Olvidaste tu contraseña?</button>
           <button class="button primary full" type="submit">Entrar</button>
         </form>
 
@@ -59,6 +60,30 @@
           <label>Contraseña<input name="password" type="password" autocomplete="new-password" minlength="8" required><small>Mínimo 8 caracteres.</small></label>
           <button class="button primary full" type="submit">Crear cuenta</button>
           <p class="fine-print">Los permisos de administrador se obtienen al crear un grupo o cuando otro administrador te asciende.</p>
+        </form>
+
+        <form id="register-code-form" class="stack-lg" hidden>
+          <div><span class="eyebrow">Revisa tu correo</span><h2>Confirma que eres tú</h2><p class="muted">Enviamos un código de 6 dígitos a <strong data-code-email></strong>.</p></div>
+          <input name="email" type="hidden">
+          <label>Código de verificación<input name="code" class="code-input auth-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required></label>
+          <button class="button primary full" type="submit">Verificar y crear cuenta</button>
+          <div class="auth-form-actions"><button class="auth-link" type="button" data-auth-action="register-back">Cambiar datos</button><button class="auth-link" type="button" data-auth-action="register-resend" disabled>Reenviar en <span data-resend-seconds>60</span> s</button></div>
+        </form>
+
+        <form id="forgot-form" class="stack-lg" hidden>
+          <div><span class="eyebrow">Recupera tu acceso</span><h2>Restablecer contraseña</h2><p class="muted">Escribe tu correo y te enviaremos un código temporal.</p></div>
+          <label>Correo electrónico<input name="email" type="email" autocomplete="email" required></label>
+          <button class="button primary full" type="submit">Enviar código</button>
+          <button class="auth-link centered" type="button" data-auth-action="login">Volver a iniciar sesión</button>
+        </form>
+
+        <form id="reset-password-form" class="stack-lg" hidden>
+          <div><span class="eyebrow">Código enviado</span><h2>Elige una contraseña nueva</h2><p class="muted">Si existe una cuenta con <strong data-reset-email></strong>, el código llegará en unos minutos.</p></div>
+          <input name="email" type="hidden">
+          <label>Código de recuperación<input name="code" class="code-input auth-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required></label>
+          <label>Nueva contraseña<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>Mínimo 8 caracteres.</small></label>
+          <button class="button primary full" type="submit">Guardar contraseña</button>
+          <div class="auth-form-actions"><button class="auth-link" type="button" data-auth-action="login">Cancelar</button><button class="auth-link" type="button" data-auth-action="reset-resend" disabled>Reenviar en <span data-resend-seconds>60</span> s</button></div>
         </form>
       </div>
     </div>

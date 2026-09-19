@@ -27,6 +27,8 @@ const screens = {
   app: document.getElementById('app-shell'),
 };
 const view = document.getElementById('view');
+const authFormIds = ['login-form', 'register-form', 'register-code-form', 'forgot-form', 'reset-password-form'];
+let resendTimer;
 
 function showScreen(name) {
   Object.entries(screens).forEach(([key, element]) => { element.hidden = key !== name; });
@@ -54,11 +56,55 @@ function formValues(form) {
     .map(element => [element.getAttribute('name'), element.value]));
 }
 
+function showAuthForm(formId, activeTab = formId === 'register-form' || formId === 'register-code-form' ? 'register' : 'login') {
+  authFormIds.forEach(id => { document.getElementById(id).hidden = id !== formId; });
+  document.querySelectorAll('[data-auth-tab]').forEach(item => item.classList.toggle('active', item.dataset.authTab === activeTab));
+}
+
+function startResendCountdown(form, seconds = 60) {
+  clearInterval(resendTimer);
+  const button = form.querySelector('[data-auth-action$="resend"]');
+  if (!button) return;
+  let remaining = Number(seconds) || 60;
+  button.innerHTML = `Reenviar en <span data-resend-seconds>${remaining}</span> s`;
+  const label = button.querySelector('[data-resend-seconds]');
+  button.disabled = true;
+  label.textContent = remaining;
+  const render = () => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(resendTimer);
+      button.disabled = false;
+      button.textContent = 'Reenviar código';
+    } else label.textContent = remaining;
+  };
+  resendTimer = setInterval(render, 1000);
+}
+
+function openCodeForm({ formId, email, resendAfter, testCode }) {
+  const form = document.getElementById(formId);
+  form.elements.email.value = email;
+  form.querySelector(formId === 'register-code-form' ? '[data-code-email]' : '[data-reset-email]').textContent = email;
+  if (testCode) form.elements.code.value = testCode;
+  showAuthForm(formId);
+  startResendCountdown(form, resendAfter);
+  form.elements.code.focus();
+}
+
+async function finishAuthentication(data) {
+  state.user = data.user;
+  state.groups = (await api.groups()).groups;
+  applyTheme(state.user.theme, state.user.accent_color);
+  if (!state.groups.length) showScreen('onboarding');
+  else { state.group = state.groups[0]; await enterApp(); }
+}
+
 function handleError(error) {
   console.error(error);
   if (error instanceof ApiError && error.status === 401) {
     state.user = null;
     showScreen('auth');
+    if (error.code !== 'UNAUTHORIZED') toast(error.message, 'error');
     return;
   }
   toast(error.message || 'Algo salió mal. Intenta de nuevo.', 'error');
@@ -161,14 +207,18 @@ async function reloadTasks() {
 
 function bindStaticEvents() {
   document.querySelectorAll('[data-auth-tab]').forEach(button => button.addEventListener('click', () => {
-    const tab = button.dataset.authTab;
-    document.querySelectorAll('[data-auth-tab]').forEach(item => item.classList.toggle('active', item === button));
-    document.getElementById('login-form').hidden = tab !== 'login';
-    document.getElementById('register-form').hidden = tab !== 'register';
+    showAuthForm(button.dataset.authTab === 'login' ? 'login-form' : 'register-form');
   }));
 
   document.getElementById('login-form').addEventListener('submit', authSubmit('login'));
   document.getElementById('register-form').addEventListener('submit', authSubmit('register'));
+  document.getElementById('register-code-form').addEventListener('submit', verifyRegistration);
+  document.getElementById('forgot-form').addEventListener('submit', requestPasswordReset);
+  document.getElementById('reset-password-form').addEventListener('submit', resetPassword);
+  document.querySelectorAll('[data-auth-action]').forEach(button => button.addEventListener('click', handleAuthAction));
+  document.querySelectorAll('.auth-code-input').forEach(input => input.addEventListener('input', () => {
+    input.value = input.value.replace(/\D/g, '').slice(0, 6);
+  }));
   document.getElementById('group-create-form').addEventListener('submit', createGroup);
   document.getElementById('group-join-form').addEventListener('submit', joinGroup);
   document.getElementById('task-form').addEventListener('submit', saveTask);
@@ -226,16 +276,100 @@ function authSubmit(type) {
     try {
       const values = formValues(form);
       if (type === 'register') values.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Mexico_City';
-      const data = type === 'login' ? await api.login(values) : await api.register(values);
-      state.user = data.user;
-      state.groups = (await api.groups()).groups;
-      applyTheme(state.user.theme, state.user.accent_color);
-      if (!state.groups.length) showScreen('onboarding');
-      else { state.group = state.groups[0]; await enterApp(); }
-      form.reset();
+      if (type === 'register') {
+        const data = await api.register(values);
+        openCodeForm({ formId: 'register-code-form', email: data.email, resendAfter: data.resend_after, testCode: data.test_code });
+        toast('Te enviamos un código. Revisa también la carpeta de spam.', 'success');
+      } else {
+        const data = await api.login(values);
+        await finishAuthentication(data);
+        form.reset();
+      }
     } catch (error) { handleError(error); }
     finally { setBusy(form, false); }
   };
+}
+
+async function verifyRegistration(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    const data = await api.verifyRegistration(formValues(form));
+    clearInterval(resendTimer);
+    await finishAuthentication(data);
+    document.getElementById('register-form').reset();
+    form.reset();
+    toast('Correo verificado. Tu cuenta ya está lista.', 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function requestPasswordReset(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    const email = form.elements.email.value;
+    const data = await api.forgotPassword(email);
+    openCodeForm({ formId: 'reset-password-form', email, resendAfter: data.resend_after, testCode: data.test_code });
+    toast(data.message, 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function resetPassword(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  setBusy(form, true);
+  try {
+    const values = formValues(form);
+    const data = await api.resetPassword(values);
+    clearInterval(resendTimer);
+    showAuthForm('login-form');
+    document.getElementById('login-form').elements.email.value = values.email;
+    document.getElementById('login-form').elements.password.focus();
+    form.reset();
+    toast(data.message, 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function handleAuthAction(event) {
+  const action = event.currentTarget.dataset.authAction;
+  if (action === 'forgot') {
+    const email = document.getElementById('login-form').elements.email.value;
+    showAuthForm('forgot-form');
+    document.getElementById('forgot-form').elements.email.value = email;
+    document.getElementById('forgot-form').elements.email.focus();
+    return;
+  }
+  if (action === 'login') {
+    clearInterval(resendTimer);
+    showAuthForm('login-form');
+    return;
+  }
+  if (action === 'register-back') {
+    clearInterval(resendTimer);
+    showAuthForm('register-form');
+    return;
+  }
+
+  const isRegistration = action === 'register-resend';
+  const form = document.getElementById(isRegistration ? 'register-code-form' : 'reset-password-form');
+  setBusy(form, true);
+  let resendAfter;
+  try {
+    const email = form.elements.email.value;
+    const data = isRegistration ? await api.resendRegistrationCode(email) : await api.forgotPassword(email);
+    form.elements.code.value = data.test_code || '';
+    resendAfter = data.resend_after;
+    toast('Enviamos un código nuevo. El anterior dejó de funcionar.', 'success');
+  } catch (error) { handleError(error); }
+  finally {
+    setBusy(form, false);
+    if (resendAfter) startResendCountdown(form, resendAfter);
+  }
 }
 
 async function createGroup(event) {
