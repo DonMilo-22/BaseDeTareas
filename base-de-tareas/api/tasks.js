@@ -1,4 +1,4 @@
-import { db, initDatabase } from "./_db.js";
+import { db, generateId, initDatabase, tableHasColumn } from "./_db.js";
 import { verifyToken, logActivity } from "./_auth.js";
 import { sendTaskCreatedNotifications } from "./_email.js";
 
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
                u_cr.name as creator_name, u_cr.avatar_url as creator_avatar,
                u_up.name as updater_name, u_up.avatar_url as updater_avatar
         FROM tasks t
-        LEFT JOIN classes c ON CAST(t.class_id AS NUMERIC) = CAST(c.id AS NUMERIC)
+        LEFT JOIN classes c ON CAST(t.class_id AS TEXT) = CAST(c.id AS TEXT)
         LEFT JOIN users u_cr ON t.created_by = u_cr.id
         LEFT JOIN users u_up ON t.updated_by = u_up.id
         WHERE 1=1
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       const args = [];
 
       if (class_id && class_id !== "todas") {
-        query += " AND CAST(t.class_id AS NUMERIC) = CAST(? AS NUMERIC)";
+        query += " AND CAST(t.class_id AS TEXT) = CAST(? AS TEXT)";
         args.push(class_id);
       }
 
@@ -79,20 +79,20 @@ export default async function handler(req, res) {
         // Completions para esta tarea específica
         const taskCompMap = new Map();
         allCompletions
-          .filter(c => c.task_id === task.id)
-          .forEach(c => taskCompMap.set(c.user_id, c.completed_at));
+          .filter(c => String(c.task_id) === String(task.id))
+          .forEach(c => taskCompMap.set(String(c.user_id), c.completed_at));
 
-        const completedByMe = currentUserId ? (taskCompMap.has(currentUserId) ? 1 : 0) : 0;
+        const completedByMe = currentUserId ? (taskCompMap.has(String(currentUserId)) ? 1 : 0) : 0;
 
         // Lista de compañeros con su estado en esta tarea
         const completionsList = allUsers.map(user => {
-          const isCompleted = taskCompMap.has(user.id);
+          const isCompleted = taskCompMap.has(String(user.id));
           return {
             user_id: user.id,
             name: user.name,
             avatar_url: user.avatar_url,
             completed: isCompleted ? 1 : 0,
-            completed_at: isCompleted ? taskCompMap.get(user.id) : null,
+            completed_at: isCompleted ? taskCompMap.get(String(user.id)) : null,
           };
         });
 
@@ -140,37 +140,63 @@ export default async function handler(req, res) {
       }
 
       const classRes = await db.execute({
-        sql: "SELECT id FROM classes WHERE id = ? OR CAST(id AS TEXT) = CAST(? AS TEXT) LIMIT 1;",
-        args: [class_id, class_id],
+        sql: "SELECT * FROM classes WHERE CAST(id AS TEXT) = CAST(? AS TEXT) LIMIT 1;",
+        args: [class_id],
       });
       if (classRes.rows.length === 0) {
         return res.status(404).json({ error: "La clase seleccionada no existe." });
       }
 
       const storedClassId = classRes.rows[0].id;
-      const taskId = "tsk_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+      const taskId = generateId("tsk");
       const photosJson = JSON.stringify(Array.isArray(photos) ? photos : []);
       const nowIso = new Date().toISOString();
       const taskTopic = (topic || "Tema 1").trim();
 
-      await db.execute({
-        sql: `INSERT INTO tasks (id, class_id, title, topic, description, due_date, priority, photos, created_by, updated_by, created_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-        args: [
-          taskId,
-          storedClassId,
-          title.trim(),
-          taskTopic,
-          (description || "").trim(),
-          due_date,
-          priority || "media",
-          photosJson,
-          userAuth.id,
-          userAuth.id,
-          nowIso,
-          nowIso,
-        ],
-      });
+      const usesLegacyGroups = await tableHasColumn("tasks", "group_id");
+      if (usesLegacyGroups) {
+        await db.execute({
+          sql: `INSERT INTO tasks
+                (id, group_id, class_id, title, topic, description, due_at, due_date,
+                 priority, photos, created_by, updated_by, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          args: [
+            taskId,
+            classRes.rows[0].group_id,
+            storedClassId,
+            title.trim(),
+            taskTopic,
+            (description || "").trim(),
+            due_date,
+            due_date,
+            priority || "media",
+            photosJson,
+            String(userAuth.id),
+            String(userAuth.id),
+            nowIso,
+            nowIso,
+          ],
+        });
+      } else {
+        await db.execute({
+          sql: `INSERT INTO tasks (id, class_id, title, topic, description, due_date, priority, photos, created_by, updated_by, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+          args: [
+            taskId,
+            storedClassId,
+            title.trim(),
+            taskTopic,
+            (description || "").trim(),
+            due_date,
+            priority || "media",
+            photosJson,
+            userAuth.id,
+            userAuth.id,
+            nowIso,
+            nowIso,
+          ],
+        });
+      }
 
       // Obtener nombre de la clase para el log y los correos
       const clsRes = await db.execute({ sql: "SELECT name FROM classes WHERE id = ?;", args: [storedClassId] });
@@ -239,23 +265,54 @@ export default async function handler(req, res) {
       const nowIso = new Date().toISOString();
       const taskTopic = (topic || "Tema 1").trim();
 
-      await db.execute({
-        sql: `UPDATE tasks 
-              SET class_id = ?, title = ?, topic = ?, description = ?, due_date = ?, priority = ?, photos = ?, updated_by = ?, updated_at = ?
-              WHERE id = ?;`,
-        args: [
-          class_id,
-          title.trim(),
-          taskTopic,
-          (description || "").trim(),
-          due_date,
-          priority || "media",
-          photosJson,
-          userAuth.id,
-          nowIso,
-          id,
-        ],
-      });
+      const usesLegacyGroups = await tableHasColumn("tasks", "group_id");
+      if (usesLegacyGroups) {
+        const classRes = await db.execute({
+          sql: "SELECT group_id FROM classes WHERE CAST(id AS TEXT) = CAST(? AS TEXT) LIMIT 1;",
+          args: [class_id],
+        });
+        if (classRes.rows.length === 0) {
+          return res.status(404).json({ error: "La clase seleccionada no existe." });
+        }
+        await db.execute({
+          sql: `UPDATE tasks
+                SET group_id = ?, class_id = ?, title = ?, topic = ?, description = ?,
+                    due_at = ?, due_date = ?, priority = ?, photos = ?, updated_by = ?, updated_at = ?
+                WHERE id = ?;`,
+          args: [
+            classRes.rows[0].group_id,
+            class_id,
+            title.trim(),
+            taskTopic,
+            (description || "").trim(),
+            due_date,
+            due_date,
+            priority || "media",
+            photosJson,
+            String(userAuth.id),
+            nowIso,
+            id,
+          ],
+        });
+      } else {
+        await db.execute({
+          sql: `UPDATE tasks
+                SET class_id = ?, title = ?, topic = ?, description = ?, due_date = ?, priority = ?, photos = ?, updated_by = ?, updated_at = ?
+                WHERE id = ?;`,
+          args: [
+            class_id,
+            title.trim(),
+            taskTopic,
+            (description || "").trim(),
+            due_date,
+            priority || "media",
+            photosJson,
+            userAuth.id,
+            nowIso,
+            id,
+          ],
+        });
+      }
 
       // Log activity
       await logActivity(db, {
