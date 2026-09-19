@@ -1,113 +1,108 @@
-# 📚 Base de Tareas — Sistema Colaborativo de Clases y Tareas Escolares
+# Base de Tareas v2
 
-**Base de Tareas** es una plataforma web moderna, rápida y colaborativa diseñada para estudiantes y compañeros de clase. Permite registrar asignaturas, crear tareas con fecha límite de entrega, fotos y apuntes de referencia, llevar el seguimiento de qué compañeros han completado cada tarea, ver el progreso grupal e individual, y consultar un registro de auditoría en tiempo real de todos los cambios.
+Organizador escolar colaborativo con una interfaz tranquila, tareas personales dentro de grupos,
+roles controlados, historial, papelera y recordatorios por correo. El backend funciona como una
+sola aplicación Express tanto en local como en una Function de Vercel; todos los datos persistentes
+viven en Turso.
 
-Diseñado con una estética **Glassmorphism (UI/UX Pro Max)**, compatibilidad total con base de datos en la nube **Turso (LibSQL)** y despliegue inmediato en **Vercel**.
+## Funciones
 
----
+- Grupos privados mediante código de invitación.
+- Roles `admin`, `manager` y `member` comprobados por el servidor.
+- Materias, temas, tareas, pasos, comentarios y enlaces adjuntos.
+- Progreso independiente para cada integrante.
+- Dashboard, búsqueda, filtros, calendario y exportaciones CSV, ICS y JSON.
+- Papelera recuperable e historial de actividad.
+- Recordatorios personales por correo mediante Resend.
+- Tema claro/oscuro, navegación móvil y aplicación web instalable (PWA).
 
-## ✨ Características Principales
+Nadie elige un rol privilegiado al registrarse. Quien crea un grupo se convierte en su primer
+administrador; después puede promover a una o más personas desde **Equipo**. Un gestor administra
+materias y tareas, pero no puede cambiar permisos.
 
-- **Gestión de Materias / Clases**: Crea asignaturas con nombre, código (ej: *MAT-201*), profesor, horario, aula, color personalizado e icono temático.
-- **Tareas y Asignaciones**: Título, descripción detallada, nivel de prioridad (*Urgente, Alta, Media, Baja*), fecha y hora límite de entrega.
-- **Galería de Referencias Visuales / Fotos**: Adjunta fotos de pizarrón, apuntes o rúbricas de evaluación mediante drag-and-drop o URLs directas, con visor ampliado (Lightbox en alta resolución).
-- **Lista de Cumplimiento por Tarea**: Visualiza con exactitud qué compañeros han completado una tarea y quiénes la tienen pendiente, junto a una barra de porcentaje total de entrega grupal.
-- **Progreso Personal vs. Grupal**: Cada estudiante tiene su propia cuenta y foto de perfil. Puede marcar sus tareas como completadas con 1 solo clic y consultar sus métricas personales y las de la clase.
-- **Registro de Actividad en Vivo (Historial de Cambios)**: Feed cronológico con foto del autor que registra quién creó una tarea, quién editó una descripción o quién completó sus deberes.
-- **Directorio de Compañeros**: Directorio de la clase con estadísticas de avance de cada alumno y opción de cambio rápido de cuenta para pruebas.
-- **Diseño Glassmorphism Pro Max**: Paneles translúcidos con `backdrop-filter: blur()`, orbes dinámicos de fondo, micro-animaciones, badges luminosos y 100% responsivo para móviles y escritorio.
+## Estructura
 
----
-
-## 🛠️ Tecnologías Utilizadas
-
-- **Frontend**: HTML5 semántico, CSS3 moderno (Variables CSS, Flexbox/Grid, Animaciones Glassmorphic) y JavaScript Vanilla modular (ES Modules).
-- **Base de Datos**: [Turso](https://turso.tech) (LibSQL / SQLite distribuido en el Edge) mediante `@libsql/client` (con soporte automático de fallback a SQLite local para desarrollo).
-- **Backend**: API Serverless Functions en Node.js compatibles con **Vercel** (`/api/*`).
-- **Autenticación**: JSON Web Tokens (JWT) y cifrado seguro de contraseñas con `bcryptjs`.
-
----
-
-## 🚀 Inicio Rápido Local
-
-### 1. Clonar o abrir el directorio del proyecto
-```bash
-cd /Users/milo/.gemini/antigravity-ide/scratch/base-de-tareas
+```text
+base-de-tareas/
+├── api/index.js              # entrada serverless de Vercel
+├── database/schema.sql       # esquema completo para Turso
+├── public/                   # SPA sin proceso de compilación
+├── scripts/migrate.mjs       # aplica el esquema de forma idempotente
+├── src/server/               # API, autenticación, permisos y correo
+└── test/                     # integración de API, interfaz y navegador
 ```
 
-### 2. Instalar dependencias
+## Preparar Turso
+
+Esta versión necesita una base nueva; el esquema anterior no es compatible. Crea una base vacía y
+no apuntes el despliegue actual a ella hasta terminar la configuración.
+
 ```bash
-npm install
+turso db create base-de-tareas-v2
+turso db show base-de-tareas-v2 --url
+turso db tokens create base-de-tareas-v2
 ```
 
-### 3. Iniciar el servidor local de desarrollo
+Copia `.env.example` a `.env`, completa la URL y el token, y aplica el esquema:
+
 ```bash
+cd base-de-tareas
+npm ci
+npm run migrate
+```
+
+El archivo que también puedes introducir directamente en la consola de Turso es
+[`base-de-tareas/database/schema.sql`](base-de-tareas/database/schema.sql). Es idempotente: volver a
+ejecutarlo no elimina información. La tabla `schema_migrations` registra la versión instalada.
+
+## Desarrollo local
+
+```bash
+cd base-de-tareas
+cp .env.example .env
+# Genera JWT_SECRET, por ejemplo: openssl rand -base64 48
+npm ci
+npm run migrate
 npm run dev
 ```
 
-Abre tu navegador en [http://localhost:3000](http://localhost:3000). La aplicación iniciará con datos de prueba sembrados automáticamente y una base de datos local lista para usar.
+Abre `http://localhost:3000`. Si `TURSO_DATABASE_URL=file:./database/local.db`, el mismo esquema se
+usa en un archivo SQLite local compatible con LibSQL.
 
----
+## Recordatorios
 
-## ☁️ Conectar con Turso (Base de Datos en la Nube)
+Configura un dominio verificado en Resend y estas variables:
 
-1. Instala la CLI de Turso o crea una cuenta en [turso.tech](https://turso.tech):
-   ```bash
-   turso auth signup
-   ```
-2. Crea tu base de datos:
-   ```bash
-   turso db create base-de-tareas-db
-   ```
-3. Obtén la URL de conexión:
-   ```bash
-   turso db show base-de-tareas-db --url
-   # Ejemplo: libsql://base-de-tareas-db-tuusuario.turso.io
-   ```
-4. Genera un token de autenticación:
-   ```bash
-   turso db tokens create base-de-tareas-db
-   ```
-5. Crea un archivo `.env` en la raíz de tu proyecto basándote en `.env.example`:
-   ```env
-   TURSO_DATABASE_URL=libsql://base-de-tareas-db-tuusuario.turso.io
-   TURSO_AUTH_TOKEN=tu_token_aqui
-   JWT_SECRET=tu_clave_secreta_super_segura
-   PORT=3000
-   ```
-
-La aplicación creará automáticamente las tablas y sembrará los datos iniciales al arrancar.
-
----
-
-## 🔺 Despliegue en Vercel
-
-El proyecto está 100% preconfigurado con `vercel.json` para desplegar el frontend estático y las funciones Serverless en `/api`.
-
-### Opción 1: Mediante la CLI de Vercel
-```bash
-npm i -g vercel
-vercel
+```env
+RESEND_API_KEY=re_...
+EMAIL_FROM=Base de Tareas <recordatorios@tu-dominio.com>
+APP_URL=https://tu-dominio.vercel.app
+CRON_SECRET=un-secreto-largo-y-aleatorio
 ```
-Durante el despliegue o en el Dashboard de Vercel (**Settings > Environment Variables**), agrega las siguientes variables de entorno:
-- `TURSO_DATABASE_URL`
-- `TURSO_AUTH_TOKEN`
-- `JWT_SECRET`
 
-### Opción 2: Mediante GitHub + Vercel Dashboard
-1. Sube este proyecto a tu repositorio de GitHub.
-2. En [vercel.com](https://vercel.com), haz clic en **"Add New Project"** e importa el repositorio.
-3. En la sección **Environment Variables**, añade `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` y `JWT_SECRET`.
-4. Haz clic en **Deploy**. ¡Listo!
+Los correos dentro de los próximos 29 días se programan inmediatamente. Los recordatorios más
+lejanos quedan en cola; el cron diario de Vercel los entrega a Resend al entrar en esa ventana y
+Resend conserva la hora exacta solicitada.
 
----
+## Desplegar en Vercel
 
-## 👥 Cuentas de Demostración Incluidas
+1. Importa el repositorio y selecciona `base-de-tareas` como **Root Directory**.
+2. Usa Node.js 22.
+3. Agrega `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `JWT_SECRET`, `APP_URL`, `RESEND_API_KEY`,
+   `EMAIL_FROM` y `CRON_SECRET` para Production y Preview.
+4. Ejecuta `npm run migrate` una vez contra la base nueva.
+5. Despliega y verifica con `BASE_URL=https://... npm run smoke`.
 
-Puedes probar la interacción entre múltiples compañeros utilizando cualquiera de las cuentas de prueba precargadas (contraseña: `123456`):
-- **Mateo Ramos**: `mateo@estudiante.com`
-- **Sofía Mendoza**: `sofia@estudiante.com`
-- **Carlos Herrera**: `carlos@estudiante.com`
-- **Lucía Gómez**: `lucia@estudiante.com`
+La aplicación no crea ni modifica tablas durante una petición web. Si falta la base o un secreto
+seguro en producción, falla de forma explícita en vez de usar datos temporales.
 
-O bien, crea tu propia cuenta con tu nombre, correo y foto de perfil en el botón **"Crear Cuenta"**.
+## Verificación
+
+```bash
+npm run check       # sintaxis + pruebas de API e interfaz
+npm run test:e2e    # Chrome de escritorio y viewport móvil
+npm audit --omit=dev
+```
+
+Consulta [`base-de-tareas/docs/architecture.md`](base-de-tareas/docs/architecture.md) para las
+decisiones de seguridad y datos.

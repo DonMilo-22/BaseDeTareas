@@ -6,6 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.TURSO_DATABASE_URL = 'file::memory:';
 process.env.JWT_SECRET = 'test-secret-with-more-than-thirty-two-characters';
 process.env.APP_URL = 'http://localhost:3000';
+process.env.CRON_SECRET = 'test-cron-secret';
 
 let app;
 let db;
@@ -15,6 +16,7 @@ let groupId;
 let classId;
 let taskId;
 let subtaskId;
+let topicId;
 let commentId;
 let reminderId;
 
@@ -64,7 +66,7 @@ describe('Base de Tareas v2 API', () => {
     }).expect(201);
     classId = cls.body.class.id;
     const classes = await admin.get(`/api/groups/${groupId}/classes`).expect(200);
-    const topicId = classes.body.classes[0].topics[0].id;
+    topicId = classes.body.classes[0].topics[0].id;
     const task = await member.post(`/api/groups/${groupId}/tasks`).send({
       class_id: classId,
       topic_id: topicId,
@@ -98,6 +100,38 @@ describe('Base de Tareas v2 API', () => {
     const detail = await admin.get(`/api/groups/${groupId}/tasks/${taskId}`).expect(200);
     expect(detail.body.comments[0].id).toBe(commentId);
     expect(detail.body.reminders[0].id).toBe(reminderId);
+  });
+
+  it('queues distant reminders and schedules them through the protected cron', async () => {
+    const dueAt = new Date(Date.now() + 60 * 86400000).toISOString();
+    await member.patch(`/api/groups/${groupId}/tasks/${taskId}`).send({
+      class_id: classId,
+      topic_id: topicId,
+      title: 'Configurar topología',
+      description: 'Entregar capturas.',
+      due_at: dueAt,
+      is_important: true,
+      subtasks: ['Crear routers', 'Probar conectividad'],
+    }).expect(200);
+    const distant = await admin.post(`/api/groups/${groupId}/tasks/${taskId}/reminders`).send({
+      remind_at: new Date(Date.now() + 40 * 86400000).toISOString(),
+    }).expect(201);
+    expect(distant.body.reminder.status).toBe('pending');
+    await request(app).get('/api/cron/reminders').expect(401);
+    await db.execute({
+      sql: `UPDATE reminders SET remind_at = ? WHERE id = ?`,
+      args: [new Date(Date.now() + 3 * 86400000).toISOString(), distant.body.reminder.id],
+    });
+    const cron = await request(app).get('/api/cron/reminders').set('Authorization', 'Bearer test-cron-secret').expect(200);
+    expect(cron.body.scheduled).toBe(1);
+  });
+
+  it('rejects unsafe attachment protocols', async () => {
+    const response = await member.post(`/api/groups/${groupId}/tasks/${taskId}/attachments`).send({
+      name: 'Enlace inseguro',
+      url: 'javascript:alert(1)',
+    }).expect(400);
+    expect(response.body.error.code).toBe('BAD_REQUEST');
   });
 
   it('exports calendar and CSV data', async () => {

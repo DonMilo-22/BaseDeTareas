@@ -43,13 +43,15 @@ se considera una medida de seguridad.
 ## Recordatorios
 
 1. El usuario crea un recordatorio ligado a una tarea y una fecha futura.
-2. La API programa el correo directamente con `scheduledAt` de Resend y guarda su identificador.
-3. Resend conserva la programación y envía el mensaje a la hora indicada.
-4. Si el usuario elimina el recordatorio, la API cancela también el correo programado.
+2. Si faltan 29 días o menos, la API programa el correo con `scheduledAt` de Resend.
+3. Si falta más tiempo, el recordatorio queda `pending`; un cron diario lo programa cuando entra
+   en la ventana de Resend. El cron no envía el mensaje, por lo que su baja precisión no altera la
+   hora elegida por el usuario.
+4. Resend conserva la programación y envía el mensaje a la hora indicada.
+5. Al cancelar el recordatorio, la tarea o la materia, la API cancela también el correo programado.
 
-Este diseño evita depender de Vercel Cron: en el plan Hobby solo puede ejecutarse una vez al día
-y no ofrece precisión suficiente para recordatorios por hora. `RESEND_API_KEY` y `EMAIL_FROM`
-habilitan el envío real; en pruebas se utiliza un adaptador de correo falso.
+`RESEND_API_KEY`, `EMAIL_FROM` y `CRON_SECRET` habilitan el flujo real; en pruebas se utiliza un
+adaptador de correo falso. La clave idempotente evita duplicados si el cron reintenta una petición.
 
 ## Decisiones de datos
 

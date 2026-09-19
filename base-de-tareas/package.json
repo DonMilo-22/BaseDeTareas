@@ -5,7 +5,9 @@
   "description": "Organizador escolar colaborativo para Vercel y Turso",
   "type": "module",
   "main": "server.js",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
@@ -31,8 +33,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "fetch-cookie": "^3.2.0",
+    "happy-dom": "^20.14.5",
+    "html-validate": "^11.16.0",
     "supertest": "^7.1.4",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.1"
   },
   "license": "MIT"
 }
