@@ -114,5 +114,24 @@ describe('interfaz v2', () => {
     document.querySelector('[data-task-id]').click();
     await waitFor(() => document.getElementById('task-detail-content').textContent.includes('Investigar'));
     expect(document.getElementById('task-detail-content').textContent).toContain('Reporte final');
+
+    document.querySelector('[data-detail-action="close"]').click();
+    document.querySelector('[data-view="announcements"]').click();
+    await waitFor(() => document.getElementById('view').textContent.includes('Anuncios'));
+    document.querySelector('[data-action="new-announcement"]').click();
+    const announcementForm = document.getElementById('announcement-form');
+    announcementForm.querySelector('[name="body"]').value = 'El martes traer libreta y lápiz.';
+    announcementForm.querySelector('[name="event_at"]').value = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 16);
+    announcementForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => !document.getElementById('announcement-dialog').open && document.getElementById('view').textContent.includes('traer libreta'));
+
+    document.querySelector('[data-view="calendar"]').click();
+    await waitFor(() => document.getElementById('view').textContent.includes('Aviso · El martes traer libreta'));
+  });
+
+  it('includes the actor name in activity sentences', async () => {
+    const { activitySentence } = await import('../public/js/ui.js');
+    expect(activitySentence({ user_name: 'Emiliano', summary: 'Completó la tarea Investigación.' }))
+      .toBe('Emiliano completó la tarea Investigación.');
   });
 });
