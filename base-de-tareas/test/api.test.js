@@ -23,6 +23,20 @@ let topicId;
 let commentId;
 let reminderId;
 
+async function registerVerified(agent, account) {
+  const started = await agent.post('/api/auth/register').send(account).expect(202);
+  expect(started.body.verification_required).toBe(true);
+  const beforeVerification = await db.execute({
+    sql: 'SELECT id FROM users WHERE email = ? COLLATE NOCASE',
+    args: [account.email],
+  });
+  expect(beforeVerification.rows).toHaveLength(0);
+  return agent.post('/api/auth/register/verify').send({
+    email: account.email,
+    code: started.body.test_code,
+  }).expect(201);
+}
+
 beforeAll(async () => {
   ({ default: app } = await import('../src/server/app.js'));
   db = (await import('../src/server/db.js')).getDb();
@@ -35,16 +49,63 @@ beforeAll(async () => {
 describe('Base de Tareas v2 API', () => {
   it('reports a healthy database', async () => {
     const response = await request(app).get('/api/health').expect(200);
-    expect(response.body).toMatchObject({ ok: true, version: '2.2.1' });
+    expect(response.body).toMatchObject({ ok: true, version: '2.3.0' });
   });
 
-  it('registers users without allowing role selection', async () => {
-    const registeredAdmin = await admin.post('/api/auth/register').send({ name: 'Administradora', email: 'admin@example.com', password: 'Segura-1234', role: 'admin' }).expect(201);
+  it('verifies email before registering users and never accepts a requested role', async () => {
+    const registeredAdmin = await registerVerified(admin, { name: 'Administradora', email: 'admin@example.com', password: 'Segura-1234', role: 'admin' });
     adminUserId = registeredAdmin.body.user.id;
-    await member.post('/api/auth/register').send({ name: 'Estudiante', email: 'member@example.com', password: 'Segura-5678' }).expect(201);
+    await registerVerified(member, { name: 'Estudiante', email: 'member@example.com', password: 'Segura-5678' });
     const me = await admin.get('/api/auth/me').expect(200);
     expect(me.body.groups).toEqual([]);
     expect(me.body.user).not.toHaveProperty('password_hash');
+  });
+
+  it('rejects incorrect verification codes and enforces the resend cooldown', async () => {
+    const account = { name: 'Cuenta pendiente', email: 'pending@example.com', password: 'Segura-9012' };
+    const started = await request(app).post('/api/auth/register').send(account).expect(202);
+    const wrongCode = started.body.test_code === '000000' ? '000001' : '000000';
+    const incorrect = await request(app).post('/api/auth/register/verify').send({ email: account.email, code: wrongCode }).expect(400);
+    expect(incorrect.body.error.code).toBe('INVALID_CODE');
+    const cooldown = await request(app).post('/api/auth/register/resend').send({ email: account.email }).expect(429);
+    expect(cooldown.body.error.code).toBe('CODE_COOLDOWN');
+    for (let attempt = 2; attempt < 5; attempt += 1) {
+      await request(app).post('/api/auth/register/verify').send({ email: account.email, code: wrongCode }).expect(400);
+    }
+    const locked = await request(app).post('/api/auth/register/verify').send({ email: account.email, code: wrongCode }).expect(429);
+    expect(locked.body.error.code).toBe('CODE_ATTEMPTS_EXCEEDED');
+    await request(app).post('/api/auth/register/verify').send({ email: account.email, code: started.body.test_code }).expect(400);
+  });
+
+  it('rejects and removes expired verification codes', async () => {
+    const account = { name: 'Código vencido', email: 'expired@example.com', password: 'Segura-3456' };
+    const started = await request(app).post('/api/auth/register').send(account).expect(202);
+    await db.execute({
+      sql: 'UPDATE auth_codes SET expires_at = ? WHERE email = ? AND purpose = ?',
+      args: [new Date(Date.now() - 1000).toISOString(), account.email, 'registration'],
+    });
+    const response = await request(app).post('/api/auth/register/verify').send({
+      email: account.email,
+      code: started.body.test_code,
+    }).expect(400);
+    expect(response.body.error.code).toBe('CODE_EXPIRED');
+  });
+
+  it('restores a password with a temporary code and invalidates the previous password', async () => {
+    const requested = await request(app).post('/api/auth/password/forgot').send({ email: 'member@example.com' }).expect(202);
+    await request(app).post('/api/auth/password/reset').send({
+      email: 'member@example.com',
+      code: requested.body.test_code,
+      password: 'Nueva-Segura-7890',
+    }).expect(200);
+    await request(app).post('/api/auth/login').send({ email: 'member@example.com', password: 'Segura-5678' }).expect(401);
+    await member.post('/api/auth/login').send({ email: 'member@example.com', password: 'Nueva-Segura-7890' }).expect(200);
+  });
+
+  it('does not reveal whether an email exists during password recovery', async () => {
+    const response = await request(app).post('/api/auth/password/forgot').send({ email: 'nadie@example.com' }).expect(202);
+    expect(response.body.message).toContain('Si existe una cuenta');
+    expect(response.body).not.toHaveProperty('test_code');
   });
 
   it('stores profile photos and personal colors', async () => {

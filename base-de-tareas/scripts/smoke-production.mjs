@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
 
 const baseUrl = (process.env.BASE_URL || '').replace(/\/$/, '');
 assert(baseUrl, 'Falta BASE_URL');
@@ -43,29 +42,17 @@ assert.match(html, /id="app-shell"/);
 await request('/css/app.css');
 await request('/js/app.js');
 
-const suffix = randomUUID().replaceAll('-', '').slice(0, 16);
-const account = {
-  name: 'Verificación automática',
-  email: `smoke-${suffix}@example.com`,
-  password: `Prueba-${suffix}!`,
-  timezone: 'America/Mexico_City',
-};
-
-const registered = await request('/api/auth/register', { method: 'POST', body: JSON.stringify(account), expected: 201 });
-assert.equal(registered.user.email, account.email);
-const me = await request('/api/auth/me');
-assert.equal(me.user.id, registered.user.id);
-assert.deepEqual(me.groups, []);
-await request('/api/auth/me', {
-  method: 'PATCH',
-  body: JSON.stringify({ name: 'Verificación automática OK', theme: 'light' }),
-});
-await request('/api/auth/logout', { method: 'POST', expected: 204 });
-cookie = '';
+await request('/api/auth/me', { expected: 401 });
 await request('/api/auth/login', {
   method: 'POST',
-  body: JSON.stringify({ email: account.email, password: account.password }),
+  body: JSON.stringify({ email: 'smoke-inexistente@example.com', password: 'Prueba-inexistente-123' }),
+  expected: 401,
 });
-await request('/api/auth/me', { method: 'DELETE', expected: 204 });
+const recovery = await request('/api/auth/password/forgot', {
+  method: 'POST',
+  body: JSON.stringify({ email: 'smoke-inexistente@example.com' }),
+  expected: 202,
+});
+assert.match(recovery.message, /Si existe una cuenta/);
 
-console.log('Verificación de producción completada sin dejar datos temporales.');
+console.log('Verificación pública de producción completada sin crear datos temporales.');
