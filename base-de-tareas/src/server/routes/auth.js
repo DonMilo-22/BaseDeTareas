@@ -6,7 +6,7 @@ import { getDb } from '../db.js';
 import { comparePassword, createSession, clearSession, hashPassword, requireUser } from '../auth.js';
 import { AppError } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
-import { emailSchema, nameSchema, parse, passwordSchema } from '../validation.js';
+import { emailSchema, httpUrlSchema, nameSchema, parse, passwordSchema } from '../validation.js';
 
 const router = Router();
 const authLimiter = rateLimit({
@@ -86,7 +86,7 @@ router.get('/me', asyncRoute(requireUser), asyncRoute(async (req, res) => {
 
 const profileSchema = z.object({
   name: nameSchema.optional(),
-  avatar_url: z.union([z.string().url().max(2048), z.literal(''), z.null()]).optional(),
+  avatar_url: z.union([httpUrlSchema, z.literal(''), z.null()]).optional(),
   timezone: z.string().trim().min(1).max(80).optional(),
   theme: z.enum(['light', 'dark', 'system']).optional(),
   email_notifications: z.boolean().optional(),

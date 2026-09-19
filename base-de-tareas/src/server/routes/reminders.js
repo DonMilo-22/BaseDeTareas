@@ -13,6 +13,8 @@ import { idSchema, isoDateSchema, parse } from '../validation.js';
 const router = Router({ mergeParams: true });
 router.use(asyncRoute(requireUser));
 
+const scheduleWindowMs = 29 * 24 * 60 * 60 * 1000;
+
 router.post('/:taskId/reminders', asyncRoute(async (req, res) => {
   const groupId = parse(idSchema, req.params.groupId);
   const taskId = parse(idSchema, req.params.taskId);
@@ -25,19 +27,23 @@ router.post('/:taskId/reminders', asyncRoute(async (req, res) => {
   if (!Number(req.user.email_notifications)) throw new AppError(409, 'Activa los correos en tu perfil antes de crear el recordatorio.', 'EMAIL_DISABLED');
 
   const reminderId = randomUUID();
-  const providerEmailId = await scheduleReminderEmail({ reminderId, to: req.user.email, userName: req.user.name, task, remindAt: remind_at });
+  const scheduleNow = reminderTime <= Date.now() + scheduleWindowMs;
+  const providerEmailId = scheduleNow
+    ? await scheduleReminderEmail({ reminderId, to: req.user.email, userName: req.user.name, task, remindAt: remind_at })
+    : null;
+  const status = scheduleNow ? 'scheduled' : 'pending';
   try {
     await getDb().execute({
       sql: `INSERT INTO reminders (id, task_id, user_id, remind_at, status, provider_email_id)
-            VALUES (?, ?, ?, ?, 'scheduled', ?)`,
-      args: [reminderId, taskId, req.user.id, remind_at, providerEmailId],
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [reminderId, taskId, req.user.id, remind_at, status, providerEmailId],
     });
   } catch (error) {
     await cancelReminderEmail(providerEmailId).catch(() => {});
     if (String(error.message).includes('UNIQUE')) throw new AppError(409, 'Ya tienes un recordatorio a esa hora.', 'REMINDER_EXISTS');
     throw error;
   }
-  res.status(201).json({ reminder: { id: reminderId, task_id: taskId, remind_at, status: 'scheduled' } });
+  res.status(201).json({ reminder: { id: reminderId, task_id: taskId, remind_at, status } });
 }));
 
 router.delete('/:taskId/reminders/:reminderId', asyncRoute(async (req, res) => {

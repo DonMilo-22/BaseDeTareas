@@ -145,7 +145,7 @@ router.get('/:groupId/dashboard', asyncRoute(async (req, res) => {
       args: [now, now, week, req.user.id, groupId],
     }),
     getDb().execute({
-      sql: `SELECT t.id, t.title, t.due_at, t.is_important, c.name AS class_name, c.color,
+      sql: `SELECT t.id, t.title, t.due_at, t.is_important, c.name AS class_name, c.color AS class_color,
                    CASE WHEN tc.task_id IS NULL THEN 0 ELSE 1 END AS completed
             FROM tasks t JOIN classes c ON c.id = t.class_id
             LEFT JOIN task_completions tc ON tc.task_id = t.id AND tc.user_id = ?

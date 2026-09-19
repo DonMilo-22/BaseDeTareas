@@ -9,6 +9,7 @@ import taskRoutes from './routes/tasks.js';
 import collaborationRoutes from './routes/collaboration.js';
 import reminderRoutes from './routes/reminders.js';
 import extraRoutes from './routes/extras.js';
+import cronRoutes from './routes/cron.js';
 import { checkDatabase } from './db.js';
 import { errorHandler, notFoundHandler, requireSameOrigin } from './middleware.js';
 
@@ -44,6 +45,7 @@ app.get('/api/health', async (_req, res, next) => {
   }
 });
 
+app.use('/api/cron', cronRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/groups/:groupId/classes', classRoutes);

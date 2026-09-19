@@ -18,4 +18,5 @@ export const config = Object.freeze({
   appUrl: (process.env.APP_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, ''),
   resendApiKey: process.env.RESEND_API_KEY || '',
   emailFrom: process.env.EMAIL_FROM || '',
+  cronSecret: process.env.CRON_SECRET || '',
 });

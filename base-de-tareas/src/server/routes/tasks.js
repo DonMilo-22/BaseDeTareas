@@ -8,6 +8,7 @@ import { notFound } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
 import { requireMembership } from '../permissions.js';
 import { taskInGroup } from '../resources.js';
+import { cancelTaskReminders } from '../reminder-cleanup.js';
 import { booleanFromQuery, idSchema, isoDateSchema, parse } from '../validation.js';
 
 const router = Router({ mergeParams: true });
@@ -114,11 +115,18 @@ router.patch('/:taskId', asyncRoute(async (req, res) => {
   const current = await taskInGroup(groupId, taskId);
   const input = parse(taskSchema, req.body);
   await validateRelations(groupId, input);
-  await getDb().execute({
-    sql: `UPDATE tasks SET class_id = ?, topic_id = ?, title = ?, description = ?, due_at = ?,
-          is_important = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ?`,
-    args: [input.class_id, input.topic_id || null, input.title, input.description, input.due_at, Number(input.is_important), req.user.id, taskId],
-  });
+  const statements = [
+    {
+      sql: `UPDATE tasks SET class_id = ?, topic_id = ?, title = ?, description = ?, due_at = ?,
+            is_important = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP, version = version + 1 WHERE id = ?`,
+      args: [input.class_id, input.topic_id || null, input.title, input.description, input.due_at, Number(input.is_important), req.user.id, taskId],
+    },
+    { sql: 'DELETE FROM subtasks WHERE task_id = ?', args: [taskId] },
+  ];
+  for (const [position, title] of input.subtasks.entries()) {
+    statements.push({ sql: 'INSERT INTO subtasks (id, task_id, title, position, created_by) VALUES (?, ?, ?, ?, ?)', args: [randomUUID(), taskId, title, position, req.user.id] });
+  }
+  await getDb().batch(statements, 'write');
   await logActivity({ groupId, userId: req.user.id, action: 'task.updated', entityType: 'task', entityId: taskId, summary: `Actualizó la tarea ${input.title}.`, metadata: { previous_due_at: current.due_at, due_at: input.due_at } });
   res.json({ task: { id: taskId, group_id: groupId, ...input, version: Number(current.version) + 1 } });
 }));
@@ -128,6 +136,7 @@ router.delete('/:taskId', asyncRoute(async (req, res) => {
   const taskId = parse(idSchema, req.params.taskId);
   await requireMembership(groupId, req.user.id, 'manager');
   const task = await taskInGroup(groupId, taskId);
+  await cancelTaskReminders([taskId]);
   await getDb().execute({ sql: `UPDATE tasks SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, args: [taskId] });
   await logActivity({ groupId, userId: req.user.id, action: 'task.deleted', entityType: 'task', entityId: taskId, summary: `Movió ${task.title} a la papelera.` });
   res.status(204).end();

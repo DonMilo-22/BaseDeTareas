@@ -8,7 +8,7 @@ import { forbidden, notFound } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
 import { requireMembership } from '../permissions.js';
 import { taskInGroup } from '../resources.js';
-import { idSchema, parse } from '../validation.js';
+import { httpUrlSchema, idSchema, parse } from '../validation.js';
 
 const router = Router({ mergeParams: true });
 router.use(asyncRoute(requireUser));
@@ -96,7 +96,7 @@ router.post('/:taskId/attachments', asyncRoute(async (req, res) => {
   const { taskId } = await context(req, 'manager');
   const input = parse(z.object({
     name: z.string().trim().min(1).max(180),
-    url: z.string().url().max(2048),
+    url: httpUrlSchema,
     mime_type: z.string().trim().max(120).default(''),
     size_bytes: z.number().int().nonnegative().max(25_000_000).nullable().optional(),
   }), req.body);

@@ -8,6 +8,7 @@ import { notFound } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
 import { requireMembership } from '../permissions.js';
 import { idSchema, parse } from '../validation.js';
+import { cancelTaskReminders } from '../reminder-cleanup.js';
 
 const router = Router({ mergeParams: true });
 router.use(asyncRoute(requireUser));
@@ -105,6 +106,8 @@ router.delete('/:classId', asyncRoute(async (req, res) => {
   const classId = parse(idSchema, req.params.classId);
   await requireMembership(groupId, req.user.id, 'manager');
   const item = await classInGroup(groupId, classId);
+  const taskResult = await getDb().execute({ sql: 'SELECT id FROM tasks WHERE class_id = ? AND deleted_at IS NULL', args: [classId] });
+  await cancelTaskReminders(taskResult.rows.map(task => task.id));
   await getDb().batch([
     { sql: 'UPDATE classes SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', args: [classId] },
     { sql: 'UPDATE tasks SET deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP) WHERE class_id = ?', args: [classId] },

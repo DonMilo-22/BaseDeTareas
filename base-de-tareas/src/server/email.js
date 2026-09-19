@@ -32,7 +32,7 @@ export async function scheduleReminderEmail({ reminderId, to, userName, task, re
         </div>
         <p><a href="${taskUrl}" style="display:inline-block;padding:12px 18px;background:#4f46e5;color:white;text-decoration:none;border-radius:10px">Ver tarea</a></p>
       </div>`,
-  });
+  }, { idempotencyKey: `reminder-${reminderId}` });
   if (error) throw new AppError(502, 'No se pudo programar el correo.', 'EMAIL_PROVIDER_ERROR');
   return data.id;
 }
