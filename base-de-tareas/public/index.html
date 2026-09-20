@@ -3,78 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#edf0e8">
+  <meta name="theme-color" content="#f7f8fc">
   <meta name="description" content="Organiza las tareas de tu grupo sin perder de vista lo importante.">
-  <title>Base de Tareas — Mi semana escolar</title>
+  <title>Base de Tareas</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-  <svg class="svg-sprite" aria-hidden="true">
-    <symbol id="icon-mark" viewBox="0 0 24 24"><path d="M5 4.5h8.25A3.75 3.75 0 0 1 17 8.25v11.25H8.75A3.75 3.75 0 0 1 5 15.75V4.5Z"/><path d="M8.5 8.5h5M8.5 12h5M8.5 15.5h3"/></symbol>
-    <symbol id="icon-home" viewBox="0 0 24 24"><path d="m4 10 8-6 8 6v9H4v-9Z"/><path d="M9 19v-6h6v6"/></symbol>
-    <symbol id="icon-check" viewBox="0 0 24 24"><path d="M5 12.5 9.5 17 19 7.5"/><path d="M4 4h16v16H4z"/></symbol>
-    <symbol id="icon-note" viewBox="0 0 24 24"><path d="M5 4h14v13H9l-4 3V4Z"/><path d="M8 8h8M8 12h6"/></symbol>
-    <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM8 3v6M16 3v6M4 10h16"/></symbol>
-    <symbol id="icon-book" viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H12v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H12v17h4.5A3.5 3.5 0 0 1 20 22V5.5Z"/></symbol>
-    <symbol id="icon-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a2.5 2.5 0 0 1 0 5M16.5 14a4.5 4.5 0 0 1 4 4.5"/></symbol>
-    <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.12-1.3l2-1.55-2-3.46-2.46 1A7 7 0 0 0 14.2 5.4L13.8 3h-4l-.4 2.4a7 7 0 0 0-2.22 1.29l-2.46-1-2 3.46 2 1.55A7 7 0 0 0 4.6 12c0 .44.04.87.12 1.3l-2 1.55 2 3.46 2.46-1A7 7 0 0 0 9.4 18.6l.4 2.4h4l.4-2.4a7 7 0 0 0 2.22-1.29l2.46 1 2-3.46-2-1.55c.08-.43.12-.86.12-1.3Z"/></symbol>
-    <symbol id="icon-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></symbol>
-    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
-    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
-    <symbol id="icon-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
-    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
-    <symbol id="icon-left" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
-    <symbol id="icon-right" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></symbol>
-    <symbol id="icon-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
-    <symbol id="icon-restore" viewBox="0 0 24 24"><path d="M5 8V3m0 0h5M5 3l3.5 3.5A8 8 0 1 1 5 13"/></symbol>
-  </svg>
   <div id="toast-region" class="toast-region" aria-live="polite"></div>
 
   <section id="loading-screen" class="center-screen">
-    <div class="brand-mark"><svg aria-hidden="true"><use href="#icon-mark"/></svg></div>
+    <div class="brand-mark">B</div>
     <div class="loader" role="status"><span class="sr-only">Cargando</span></div>
   </section>
 
   <section id="auth-screen" class="auth-layout" hidden>
     <div class="auth-intro">
       <a class="brand brand-light" href="/" aria-label="Base de Tareas">
-        <span class="brand-mark"><svg aria-hidden="true"><use href="#icon-mark"/></svg></span><span>Base de Tareas</span>
+        <span class="brand-mark">B</span><span>Base de Tareas</span>
       </a>
       <div class="auth-copy">
-        <p class="auth-edition">Tu semestre, en orden</p>
-        <h1>Una semana clara empieza aquí.</h1>
-        <p>Entregas, materias y avisos reunidos en un registro que se lee de un vistazo.</p>
+        <span class="eyebrow">Tu semestre, en orden</span>
+        <h1>Lo importante, sin todo el ruido.</h1>
+        <p>Organiza entregas, coordina a tu grupo y recibe recordatorios cuando realmente los necesitas.</p>
       </div>
       <div class="auth-preview" aria-hidden="true">
-        <div class="preview-date"><strong>18</strong><small>sep</small></div>
+        <span class="preview-dot"></span>
         <div><small>Próxima entrega</small><strong>Proyecto de redes</strong></div>
-        <time>Mañana · 10:00</time>
+        <time>Mañana</time>
       </div>
     </div>
 
     <div class="auth-panel">
       <div class="auth-card">
         <div class="auth-tabs" role="tablist">
-          <button type="button" id="login-tab" class="auth-tab active" data-auth-tab="login" role="tab" aria-selected="true" aria-controls="login-form">Iniciar sesión</button>
-          <button type="button" id="register-tab" class="auth-tab" data-auth-tab="register" role="tab" aria-selected="false" aria-controls="register-form">Crear cuenta</button>
+          <button type="button" class="auth-tab active" data-auth-tab="login" role="tab">Iniciar sesión</button>
+          <button type="button" class="auth-tab" data-auth-tab="register" role="tab">Crear cuenta</button>
         </div>
 
-        <form id="login-form" class="stack-lg" role="tabpanel" aria-labelledby="login-tab">
-          <div><h2>Continúa donde te quedaste</h2><p class="muted">Consulta tu semana y retoma lo pendiente.</p></div>
+        <form id="login-form" class="stack-lg">
+          <div><span class="eyebrow">Bienvenido de vuelta</span><h2>Continúa donde te quedaste</h2></div>
           <label>Correo electrónico<input name="email" type="email" autocomplete="email" required></label>
           <label>Contraseña<input name="password" type="password" autocomplete="current-password" required></label>
           <button class="auth-link" type="button" data-auth-action="forgot">¿Olvidaste tu contraseña?</button>
           <button class="button primary full" type="submit">Entrar</button>
         </form>
 
-        <form id="register-form" class="stack-lg" role="tabpanel" aria-labelledby="register-tab" hidden>
-          <div><h2>Crea tu cuenta</h2><p class="muted">Empieza un registro para tu grupo.</p></div>
+        <form id="register-form" class="stack-lg" hidden>
+          <div><span class="eyebrow">Primera vez por aquí</span><h2>Crea tu cuenta</h2></div>
           <label>Nombre completo<input name="name" type="text" autocomplete="name" minlength="2" maxlength="80" required></label>
           <label>Correo electrónico<input name="email" type="email" autocomplete="email" required></label>
           <label>Contraseña<input name="password" type="password" autocomplete="new-password" minlength="8" required><small>Mínimo 8 caracteres.</small></label>
@@ -83,7 +63,7 @@
         </form>
 
         <form id="register-code-form" class="stack-lg" hidden>
-          <div><h2>Confirma que eres tú</h2><p class="muted">Enviamos un código de 6 dígitos a <strong data-code-email></strong>.</p></div>
+          <div><span class="eyebrow">Revisa tu correo</span><h2>Confirma que eres tú</h2><p class="muted">Enviamos un código de 6 dígitos a <strong data-code-email></strong>.</p></div>
           <input name="email" type="hidden">
           <label>Código de verificación<input name="code" class="code-input auth-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required></label>
           <button class="button primary full" type="submit">Verificar y crear cuenta</button>
@@ -91,14 +71,14 @@
         </form>
 
         <form id="forgot-form" class="stack-lg" hidden>
-          <div><h2>Restablecer contraseña</h2><p class="muted">Escribe tu correo y te enviaremos un código temporal.</p></div>
+          <div><span class="eyebrow">Recupera tu acceso</span><h2>Restablecer contraseña</h2><p class="muted">Escribe tu correo y te enviaremos un código temporal.</p></div>
           <label>Correo electrónico<input name="email" type="email" autocomplete="email" required></label>
           <button class="button primary full" type="submit">Enviar código</button>
           <button class="auth-link centered" type="button" data-auth-action="login">Volver a iniciar sesión</button>
         </form>
 
         <form id="reset-password-form" class="stack-lg" hidden>
-          <div><h2>Elige una contraseña nueva</h2><p class="muted">Si existe una cuenta con <strong data-reset-email></strong>, el código llegará en unos minutos.</p></div>
+          <div><span class="eyebrow">Código enviado</span><h2>Elige una contraseña nueva</h2><p class="muted">Si existe una cuenta con <strong data-reset-email></strong>, el código llegará en unos minutos.</p></div>
           <input name="email" type="hidden">
           <label>Código de recuperación<input name="code" class="code-input auth-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required></label>
           <label>Nueva contraseña<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>Mínimo 8 caracteres.</small></label>
@@ -110,16 +90,17 @@
   </section>
 
   <section id="onboarding-screen" class="center-screen onboarding" hidden>
-    <a class="brand" href="/"><span class="brand-mark"><svg aria-hidden="true"><use href="#icon-mark"/></svg></span><span>Base de Tareas</span></a>
+    <a class="brand" href="/"><span class="brand-mark">B</span><span>Base de Tareas</span></a>
     <div class="onboarding-card surface">
+      <span class="eyebrow">Empecemos</span>
       <h1>¿Cómo vas a usar Base de Tareas?</h1>
       <p class="muted">Crea el espacio de tu salón o entra con el código que te compartieron.</p>
       <div class="choice-grid">
         <button type="button" class="choice-card" data-open-dialog="group-create-dialog">
-          <span class="choice-icon"><svg aria-hidden="true"><use href="#icon-plus"/></svg></span><strong>Crear un grupo</strong><small>Serás administrador y podrás organizar al equipo.</small>
+          <span class="choice-icon">＋</span><strong>Crear un grupo</strong><small>Serás administrador y podrás organizar al equipo.</small>
         </button>
         <button type="button" class="choice-card" data-open-dialog="group-join-dialog">
-          <span class="choice-icon"><svg aria-hidden="true"><use href="#icon-arrow"/></svg></span><strong>Unirme a un grupo</strong><small>Utiliza el código de invitación de tu salón.</small>
+          <span class="choice-icon">→</span><strong>Unirme a un grupo</strong><small>Utiliza el código de invitación de tu salón.</small>
         </button>
       </div>
       <button type="button" class="button ghost" id="onboarding-logout">Cerrar sesión</button>
@@ -129,27 +110,27 @@
   <div id="app-shell" class="app-shell" hidden>
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-head">
-        <a class="brand" href="#home"><span class="brand-mark"><svg aria-hidden="true"><use href="#icon-mark"/></svg></span><span class="brand-name">Base de Tareas</span></a>
-        <button type="button" id="sidebar-toggle" class="icon-button desktop-only" title="Contraer menú" aria-label="Contraer menú"><svg aria-hidden="true"><use href="#icon-chevron"/></svg></button>
-        <button type="button" id="mobile-sidebar-close" class="icon-button mobile-only" aria-label="Cerrar menú"><svg aria-hidden="true"><use href="#icon-close"/></svg></button>
+        <a class="brand" href="#home"><span class="brand-mark">B</span><span class="brand-name">Base de Tareas</span></a>
+        <button type="button" id="sidebar-toggle" class="icon-button desktop-only" title="Contraer menú" aria-label="Contraer menú">‹</button>
+        <button type="button" id="mobile-sidebar-close" class="icon-button mobile-only" aria-label="Cerrar menú">×</button>
       </div>
 
       <nav class="main-nav" aria-label="Navegación principal">
-        <a href="#home" data-view="home" class="nav-item active"><svg class="nav-icon" aria-hidden="true"><use href="#icon-home"/></svg><span>Inicio</span></a>
-        <a href="#tasks" data-view="tasks" class="nav-item"><svg class="nav-icon" aria-hidden="true"><use href="#icon-check"/></svg><span>Tareas</span><b id="pending-badge" class="nav-badge">0</b></a>
-        <a href="#announcements" data-view="announcements" class="nav-item"><svg class="nav-icon" aria-hidden="true"><use href="#icon-note"/></svg><span>Anuncios</span></a>
-        <a href="#calendar" data-view="calendar" class="nav-item"><svg class="nav-icon" aria-hidden="true"><use href="#icon-calendar"/></svg><span>Calendario</span></a>
-        <a href="#classes" data-view="classes" class="nav-item"><svg class="nav-icon" aria-hidden="true"><use href="#icon-book"/></svg><span>Materias</span></a>
+        <a href="#home" data-view="home" class="nav-item active"><span class="nav-icon">⌂</span><span>Inicio</span></a>
+        <a href="#tasks" data-view="tasks" class="nav-item"><span class="nav-icon">✓</span><span>Tareas</span><b id="pending-badge" class="nav-badge">0</b></a>
+        <a href="#announcements" data-view="announcements" class="nav-item"><span class="nav-icon">◇</span><span>Anuncios</span></a>
+        <a href="#calendar" data-view="calendar" class="nav-item"><span class="nav-icon">□</span><span>Calendario</span></a>
+        <a href="#classes" data-view="classes" class="nav-item"><span class="nav-icon">▤</span><span>Materias</span></a>
         <div class="nav-separator"></div>
-        <a href="#team" data-view="team" class="nav-item"><svg class="nav-icon" aria-hidden="true"><use href="#icon-users"/></svg><span>Equipo</span></a>
-        <a href="#settings" data-view="settings" class="nav-item"><svg class="nav-icon" aria-hidden="true"><use href="#icon-settings"/></svg><span>Ajustes</span></a>
+        <a href="#team" data-view="team" class="nav-item"><span class="nav-icon">◎</span><span>Equipo</span></a>
+        <a href="#settings" data-view="settings" class="nav-item"><span class="nav-icon">⚙</span><span>Ajustes</span></a>
       </nav>
 
       <div class="sidebar-foot">
         <button type="button" id="profile-button" class="profile-chip">
           <span id="profile-avatar" class="avatar">U</span>
           <span class="profile-copy"><strong id="profile-name">Usuario</strong><small id="profile-role">Alumno</small></span>
-          <svg aria-hidden="true"><use href="#icon-more"/></svg>
+          <span>···</span>
         </button>
       </div>
     </aside>
@@ -158,13 +139,13 @@
 
     <main class="workspace">
       <header class="topbar">
-        <button type="button" id="mobile-menu" class="icon-button mobile-only" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false"><svg aria-hidden="true"><use href="#icon-menu"/></svg></button>
+        <button type="button" id="mobile-menu" class="icon-button mobile-only" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">☰</button>
         <button type="button" id="group-switcher" class="group-switcher">
-          <span id="current-group-name">Mi grupo</span><small id="current-group-role">Alumno</small><svg aria-hidden="true"><use href="#icon-chevron"/></svg>
+          <span id="current-group-name">Mi grupo</span><small id="current-group-role">Alumno</small><span>⌄</span>
         </button>
         <div class="topbar-actions">
-          <button type="button" id="global-search" class="search-trigger"><svg aria-hidden="true"><use href="#icon-search"/></svg><span class="search-label">Buscar tareas</span><kbd>⌘ K</kbd></button>
-          <button type="button" id="quick-add" class="button primary manager-only"><svg aria-hidden="true"><use href="#icon-plus"/></svg><span>Nueva tarea</span></button>
+          <button type="button" id="global-search" class="search-trigger"><span>⌕</span><span class="search-label">Buscar tareas</span><kbd>⌘ K</kbd></button>
+          <button type="button" id="quick-add" class="button primary manager-only">＋ <span>Nueva tarea</span></button>
         </div>
       </header>
 
@@ -172,11 +153,11 @@
     </main>
 
     <nav class="mobile-nav" aria-label="Navegación móvil">
-      <a href="#home" data-view="home" class="active"><svg aria-hidden="true"><use href="#icon-home"/></svg><small>Inicio</small></a>
-      <a href="#tasks" data-view="tasks"><svg aria-hidden="true"><use href="#icon-check"/></svg><small>Tareas</small></a>
-      <a href="#classes" data-view="classes"><svg aria-hidden="true"><use href="#icon-book"/></svg><small>Materias</small></a>
-      <a href="#calendar" data-view="calendar"><svg aria-hidden="true"><use href="#icon-calendar"/></svg><small>Calendario</small></a>
-      <a href="#settings" data-view="settings"><svg aria-hidden="true"><use href="#icon-settings"/></svg><small>Ajustes</small></a>
+      <a href="#home" data-view="home" class="active"><span>⌂</span><small>Inicio</small></a>
+      <a href="#tasks" data-view="tasks"><span>✓</span><small>Tareas</small></a>
+      <a href="#announcements" data-view="announcements"><span>◇</span><small>Avisos</small></a>
+      <a href="#calendar" data-view="calendar"><span>□</span><small>Agenda</small></a>
+      <a href="#settings" data-view="settings"><span>⚙</span><small>Ajustes</small></a>
     </nav>
   </div>
 
@@ -184,7 +165,7 @@
 
   <dialog id="group-create-dialog" class="modal">
     <form method="dialog" class="modal-card" id="group-create-form">
-      <div class="modal-header"><h2>Crear grupo</h2><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar"><svg aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <div class="modal-header"><div><span class="eyebrow">Nuevo espacio</span><h2>Crear grupo</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
       <div class="modal-body stack-md">
         <label>Nombre del grupo<input name="name" type="text" placeholder="Ej. ISMA-5" required maxlength="100"></label>
         <label>Descripción <span class="optional">Opcional</span><textarea name="description" rows="3" maxlength="500" placeholder="¿Para quién es este grupo?"></textarea></label>
@@ -196,7 +177,7 @@
 
   <dialog id="group-join-dialog" class="modal">
     <form method="dialog" class="modal-card modal-small" id="group-join-form">
-      <div class="modal-header"><h2>Unirme a un grupo</h2><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar"><svg aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <div class="modal-header"><div><span class="eyebrow">Código de invitación</span><h2>Unirme a un grupo</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
       <div class="modal-body"><label>Código<input name="code" type="text" class="code-input" placeholder="A1B2C3D4" autocomplete="off" required></label></div>
       <div class="modal-footer"><button type="button" value="cancel" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary" value="default">Unirme</button></div>
     </form>
@@ -204,7 +185,7 @@
 
   <dialog id="task-dialog" class="modal">
     <form method="dialog" class="modal-card" id="task-form">
-      <div class="modal-header"><h2 id="task-form-title">Nueva tarea</h2><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar"><svg aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <div class="modal-header"><div><span class="eyebrow">Entrega</span><h2 id="task-form-title">Nueva tarea</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
       <input type="hidden" name="id">
       <div class="modal-body stack-md">
         <div class="form-grid"><label>Materia<select name="class_id" required></select></label><label>Tema<select name="topic_id"><option value="">Sin tema</option></select></label></div>
@@ -219,14 +200,14 @@
 
   <dialog id="class-dialog" class="modal">
     <form method="dialog" class="modal-card" id="class-form">
-      <div class="modal-header"><h2 id="class-form-title">Nueva materia</h2><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar"><svg aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <div class="modal-header"><div><span class="eyebrow">Organización</span><h2 id="class-form-title">Nueva materia</h2></div><button type="button" value="cancel" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
       <input type="hidden" name="id">
       <div class="modal-body stack-md">
         <div class="form-grid"><label>Nombre<input name="name" type="text" required maxlength="100"></label><label>Clave <span class="optional">Opcional</span><input name="code" type="text" maxlength="40"></label></div>
         <div class="form-grid"><label>Profesor<input name="teacher" type="text" maxlength="100"></label><label>Aula<input name="room" type="text" maxlength="80"></label></div>
         <label>Horario<input name="schedule" type="text" maxlength="160" placeholder="Lun y mié · 10:00–12:00"></label>
         <label>Temas o unidades <span class="optional">Uno por línea</span><textarea name="topics" rows="4" placeholder="Unidad 1&#10;Unidad 2"></textarea></label>
-        <label>Color<input name="color" type="color" value="#315a4a"></label>
+        <label>Color<input name="color" type="color" value="#6366f1"></label>
       </div>
       <div class="modal-footer"><button type="button" id="class-delete" class="button danger" hidden>Eliminar materia</button><span class="spacer"></span><button type="button" value="cancel" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary" value="default">Guardar materia</button></div>
     </form>
@@ -236,7 +217,7 @@
 
   <dialog id="announcement-dialog" class="modal">
     <form method="dialog" class="modal-card" id="announcement-form">
-      <div class="modal-header"><h2 id="announcement-form-title">Nuevo anuncio</h2><button type="button" class="icon-button dialog-close" aria-label="Cerrar"><svg aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <div class="modal-header"><div><span class="eyebrow">Comunicación</span><h2 id="announcement-form-title">Nuevo anuncio</h2></div><button type="button" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
       <input type="hidden" name="id">
       <div class="modal-body stack-md">
         <label>Mensaje<textarea name="body" rows="5" maxlength="4000" required placeholder="Ej. El martes traer libreta y lápiz"></textarea></label>
@@ -250,7 +231,7 @@
 
   <dialog id="announcement-reminder-dialog" class="modal">
     <form method="dialog" class="modal-card modal-small" id="announcement-reminder-form">
-      <div class="modal-header"><h2>Recordarme por correo</h2><button type="button" class="icon-button dialog-close" aria-label="Cerrar"><svg aria-hidden="true"><use href="#icon-close"/></svg></button></div>
+      <div class="modal-header"><div><span class="eyebrow">Aviso personal</span><h2>Recordarme por correo</h2></div><button type="button" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
       <input type="hidden" name="announcement_id">
       <div class="modal-body"><label>Fecha y hora<input name="remind_at" type="datetime-local" required></label></div>
       <div class="modal-footer"><button type="button" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary">Programar</button></div>
@@ -259,7 +240,7 @@
 
   <dialog id="search-dialog" class="search-dialog">
     <div class="search-card">
-      <div class="search-input-row"><svg aria-hidden="true"><use href="#icon-search"/></svg><input id="global-search-input" type="search" aria-label="Buscar por tarea o descripción" placeholder="Buscar por tarea o descripción…" autocomplete="off"><button type="button" value="cancel" class="key-button dialog-close">Esc</button></div>
+      <div class="search-input-row"><span>⌕</span><input id="global-search-input" type="search" placeholder="Buscar por tarea o descripción…" autocomplete="off"><button type="button" value="cancel" class="key-button dialog-close">Esc</button></div>
       <div id="global-search-results" class="search-results"></div>
     </div>
   </dialog>

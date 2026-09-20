@@ -1,4 +1,4 @@
-import { activitySentence, avatar, calendarCells, dateTime, emptyState, esc, icon, isManager, pageHead, roleLabel, taskRow } from './ui.js';
+import { activitySentence, avatar, calendarCells, dateTime, emptyState, esc, isManager, pageHead, roleLabel, taskRow } from './ui.js';
 
 export function homeView(state) {
   const data = state.dashboard;
@@ -6,7 +6,7 @@ export function homeView(state) {
   const upcoming = data?.upcoming || [];
   const firstName = state.user.name.split(' ')[0];
   return `
-    ${pageHead('Mi semana escolar', `Hola, ${firstName}`, 'Tus próximas entregas y el pulso del grupo, en un solo registro.', isManager(state.group) ? `<button class="button primary" data-action="new-task">${icon('plus')} Nueva tarea</button>` : '')}
+    ${pageHead('Resumen de hoy', `Hola, ${firstName}`, 'Aquí tienes lo que necesita tu atención.', isManager(state.group) ? '<button class="button primary" data-action="new-task">＋ Nueva tarea</button>' : '')}
     <section class="summary-grid">
       <article class="summary-card surface danger"><small>Atrasadas</small><strong>${Number(summary.overdue || 0)}</strong></article>
       <article class="summary-card surface accent"><small>Próximos 7 días</small><strong>${Number(summary.next_seven_days || 0)}</strong></article>
@@ -14,11 +14,11 @@ export function homeView(state) {
     </section>
     <section class="dashboard-grid">
       <details class="panel surface collapsible-panel" open>
-        <summary class="panel-head"><h2>Próximas entregas</h2><span class="summary-actions"><a class="text-link" href="#tasks">Ver todas</a><span class="collapse-chevron">${icon('chevron')}</span></span></summary>
-        <div class="task-list">${upcoming.length ? upcoming.map(taskRow).join('') : emptyState('check', 'Todo despejado', 'No tienes entregas próximas ni atrasadas.')}</div>
+        <summary class="panel-head"><h2>Próximas entregas</h2><span class="summary-actions"><a class="text-link" href="#tasks">Ver todas</a><span class="collapse-chevron">⌄</span></span></summary>
+        <div class="task-list">${upcoming.length ? upcoming.map(taskRow).join('') : emptyState('✓', 'Todo despejado', 'No tienes entregas próximas ni atrasadas.')}</div>
       </details>
       <details class="panel surface collapsible-panel" open>
-        <summary class="panel-head"><h2>Actividad reciente</h2><span class="summary-actions"><button class="text-link" data-action="show-activity">Ver historial</button><span class="collapse-chevron">${icon('chevron')}</span></span></summary>
+        <summary class="panel-head"><h2>Actividad reciente</h2><span class="summary-actions"><button class="text-link" data-action="show-activity">Ver historial</button><span class="collapse-chevron">⌄</span></span></summary>
         <div class="activity-list">
           ${(data?.activity || []).length ? data.activity.map(item => `<div class="activity-item">${avatar(item.user_name, 'small', item.avatar_url, item.avatar_color)}<div><p>${esc(activitySentence(item))}</p><time>${esc(dateTime(item.created_at))}</time></div></div>`).join('') : '<p class="muted">Todavía no hay movimientos en el grupo.</p>'}
         </div>
@@ -29,18 +29,18 @@ export function homeView(state) {
 export function tasksView(state) {
   const options = state.classes.map(item => `<option value="${esc(item.id)}" ${state.filters.class_id === item.id ? 'selected' : ''}>${esc(item.name)}</option>`).join('');
   return `
-    ${pageHead('Registro de entregas', 'Tareas', 'Filtra, encuentra y completa tus entregas.', isManager(state.group) ? `<button class="button primary" data-action="new-task">${icon('plus')} Nueva tarea</button>` : '')}
+    ${pageHead('Organización', 'Tareas', 'Filtra, encuentra y completa tus entregas.', isManager(state.group) ? '<button class="button primary" data-action="new-task">＋ Nueva tarea</button>' : '')}
     <section class="filters surface">
-      <input id="task-search" type="search" aria-label="Buscar tarea" placeholder="Buscar tarea…" value="${esc(state.filters.search || '')}">
-      <select id="class-filter" aria-label="Filtrar por materia"><option value="">Todas las materias</option>${options}</select>
-      <div class="segmented" id="status-filter" aria-label="Estado de las tareas">
-        <button data-status="" aria-pressed="${!state.filters.status}" class="${!state.filters.status ? 'active' : ''}">Todas</button>
-        <button data-status="pending" aria-pressed="${state.filters.status === 'pending'}" class="${state.filters.status === 'pending' ? 'active' : ''}">Pendientes</button>
-        <button data-status="completed" aria-pressed="${state.filters.status === 'completed'}" class="${state.filters.status === 'completed' ? 'active' : ''}">Completadas</button>
+      <input id="task-search" type="search" placeholder="Buscar tarea…" value="${esc(state.filters.search || '')}">
+      <select id="class-filter"><option value="">Todas las materias</option>${options}</select>
+      <div class="segmented" id="status-filter">
+        <button data-status="" class="${!state.filters.status ? 'active' : ''}">Todas</button>
+        <button data-status="pending" class="${state.filters.status === 'pending' ? 'active' : ''}">Pendientes</button>
+        <button data-status="completed" class="${state.filters.status === 'completed' ? 'active' : ''}">Completadas</button>
       </div>
     </section>
     <section class="task-table surface">
-      ${state.tasks.length ? state.tasks.map(taskRow).join('') : emptyState('search', 'No encontramos tareas', 'Prueba con otro filtro o crea la primera tarea del grupo.', isManager(state.group) ? '<button class="button primary" data-action="new-task">Nueva tarea</button>' : '')}
+      ${state.tasks.length ? state.tasks.map(taskRow).join('') : emptyState('⌕', 'No encontramos tareas', 'Prueba con otro filtro o crea la primera tarea del grupo.', isManager(state.group) ? '<button class="button primary" data-action="new-task">Nueva tarea</button>' : '')}
     </section>`;
 }
 
@@ -56,7 +56,7 @@ export function calendarView(state) {
   return `
     ${pageHead('Vista mensual', 'Calendario', 'Todas las fechas del grupo en un solo lugar.', '<a class="button secondary" data-export="ics">Añadir a mi calendario</a>')}
     <section class="calendar-shell surface">
-      <div class="calendar-head"><button class="icon-button" data-action="calendar-prev" aria-label="Mes anterior">${icon('left')}</button><h2>${esc(monthName[0].toUpperCase() + monthName.slice(1))}</h2><button class="icon-button" data-action="calendar-next" aria-label="Mes siguiente">${icon('right')}</button></div>
+      <div class="calendar-head"><button class="icon-button" data-action="calendar-prev" aria-label="Mes anterior">‹</button><h2>${esc(monthName[0].toUpperCase() + monthName.slice(1))}</h2><button class="icon-button" data-action="calendar-next" aria-label="Mes siguiente">›</button></div>
       <div class="calendar-grid">
         ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(day => `<div class="calendar-weekday">${day}</div>`).join('')}
         ${calendarCells(state.calendarDate, state.tasks, state.announcements)}
@@ -65,36 +65,36 @@ export function calendarView(state) {
         ${agendaItems.length ? agendaItems.map(item => `<button class="agenda-item" ${item.kind === 'task' ? `data-task-id="${esc(item.id)}"` : `data-announcement-id="${esc(item.id)}"`}>
           <span class="agenda-date"><strong>${new Date(item.when).getDate()}</strong><small>${esc(new Intl.DateTimeFormat('es-MX', { month: 'short' }).format(new Date(item.when)))}</small></span>
           <span class="agenda-copy"><strong>${esc(item.title)}</strong><small>${item.kind === 'task' ? `${esc(item.class_name)} · ${esc(dateTime(item.when))}` : `Anuncio · ${esc(dateTime(item.when))}`}</small></span>
-          <span class="agenda-arrow">${icon('right')}</span>
-        </button>`).join('') : emptyState('calendar', 'No hay fechas este mes', 'Las tareas y anuncios con fecha aparecerán aquí.')}
+          <span class="agenda-arrow">›</span>
+        </button>`).join('') : emptyState('□', 'No hay fechas este mes', 'Las tareas y anuncios con fecha aparecerán aquí.')}
       </div>
     </section>`;
 }
 
 export function announcementsView(state) {
   return `
-    ${pageHead('Comunicación del grupo', 'Anuncios', 'Avisos, comentarios y fechas que no necesitan convertirse en tarea.', `<button class="button primary" data-action="new-announcement">${icon('plus')} Nuevo anuncio</button>`)}
+    ${pageHead('Comunicación del grupo', 'Anuncios', 'Avisos, comentarios y fechas que no necesitan convertirse en tarea.', '<button class="button primary" data-action="new-announcement">＋ Nuevo anuncio</button>')}
     <section class="announcement-list">
       ${state.announcements.length ? state.announcements.map(item => `
         <article class="announcement-card surface" data-announcement-id="${esc(item.id)}">
           <header>${avatar(item.user_name, 'small', item.avatar_url, item.avatar_color)}<div><strong>${esc(item.user_name)}</strong><time>${esc(dateTime(item.created_at))}</time></div></header>
           <p>${esc(item.body)}</p>
-          ${item.event_at ? `<div class="announcement-date"><span>${icon('calendar')}</span><div><small>Fecha del aviso</small><strong>${esc(dateTime(item.event_at, { year: 'numeric' }))}</strong></div></div>` : ''}
+          ${item.event_at ? `<div class="announcement-date"><span>□</span><div><small>Fecha del aviso</small><strong>${esc(dateTime(item.event_at, { year: 'numeric' }))}</strong></div></div>` : ''}
           <footer>
             ${item.reminder_id
               ? `<span class="pill success">Correo · ${esc(dateTime(item.remind_at))}</span><button class="button ghost small" data-action="delete-announcement-reminder" data-announcement-id="${esc(item.id)}">Cancelar aviso</button>`
               : `<button class="button secondary small" data-action="announcement-reminder" data-announcement-id="${esc(item.id)}">Recordarme por correo</button>`}
             ${(item.user_id === state.user.id || isManager(state.group)) ? `<span class="spacer"></span><button class="button ghost small" data-action="edit-announcement" data-announcement-id="${esc(item.id)}">Editar</button><button class="button danger small" data-action="delete-announcement" data-announcement-id="${esc(item.id)}">Eliminar</button>` : ''}
           </footer>
-        </article>`).join('') : emptyState('note', 'Todavía no hay anuncios', 'Publica el primer aviso para mantener informado al grupo.', '<button class="button primary" data-action="new-announcement">Crear anuncio</button>')}
+        </article>`).join('') : emptyState('◇', 'Todavía no hay anuncios', 'Publica el primer aviso para mantener informado al grupo.', '<button class="button primary" data-action="new-announcement">Crear anuncio</button>')}
     </section>`;
 }
 
 export function classesView(state) {
   return `
-    ${pageHead('Tu semestre', 'Materias', 'Abre una materia y explora sus unidades sin llenar la pantalla de información.', isManager(state.group) ? `<button class="button primary" data-action="new-class">${icon('plus')} Nueva materia</button>` : '')}
+    ${pageHead('Tu semestre', 'Materias', 'Abre una materia y explora sus unidades sin llenar la pantalla de información.', isManager(state.group) ? '<button class="button primary" data-action="new-class">＋ Nueva materia</button>' : '')}
     <section class="card-grid class-grid">
-      ${state.classes.length ? state.classes.map(item => classCard(item, state)).join('') : emptyState('book', 'Aún no hay materias', isManager(state.group) ? 'Crea las materias del semestre para comenzar.' : 'Un administrador o gestor debe crear la primera materia.', isManager(state.group) ? '<button class="button primary" data-action="new-class">Crear materia</button>' : '')}
+      ${state.classes.length ? state.classes.map(item => classCard(item, state)).join('') : emptyState('▤', 'Aún no hay materias', isManager(state.group) ? 'Crea las materias del semestre para comenzar.' : 'Un administrador o gestor debe crear la primera materia.', isManager(state.group) ? '<button class="button primary" data-action="new-class">Crear materia</button>' : '')}
     </section>`;
 }
 
@@ -113,10 +113,10 @@ function classCard(item, state) {
       <header class="class-card-head">
         <button class="class-card-toggle" type="button" data-action="toggle-class" data-class-id="${esc(item.id)}" aria-expanded="${expanded}" aria-label="${expanded ? 'Cerrar' : 'Abrir'} ${esc(item.name)}">
           <span class="class-icon">${esc(item.name[0])}</span>
-          <span class="class-card-title"><strong role="heading" aria-level="2">${esc(item.name)}</strong><small>${esc(subtitle)}</small></span>
-          <span class="class-chevron" aria-hidden="true">${icon('chevron')}</span>
+          <span class="class-card-title"><strong>${esc(item.name)}</strong><small>${esc(subtitle)}</small></span>
+          <span class="class-chevron" aria-hidden="true">⌄</span>
         </button>
-        ${isManager(state.group) ? `<button class="icon-button class-edit" type="button" data-action="edit-class" data-class-id="${esc(item.id)}" aria-label="Editar ${esc(item.name)}" title="Editar materia">${icon('more')}</button>` : ''}
+        ${isManager(state.group) ? `<button class="icon-button class-edit" type="button" data-action="edit-class" data-class-id="${esc(item.id)}" aria-label="Editar ${esc(item.name)}" title="Editar materia">···</button>` : ''}
       </header>
       <div class="class-data">
         <div><strong>${Number(item.completed_count)}</strong><small>Completadas por ti</small></div>
@@ -132,17 +132,17 @@ function classCard(item, state) {
             <div><small>Aula</small><strong>${detail(item.room)}</strong></div>
           </div>
           <details class="class-units" open>
-            <summary><span><strong>Unidades y temas</strong><small>Selecciona uno para mostrar únicamente sus tareas.</small></span><span class="collapse-chevron">${icon('chevron')}</span></summary>
+            <summary><span><strong>Unidades y temas</strong><small>Selecciona uno para mostrar únicamente sus tareas.</small></span><span class="collapse-chevron">⌄</span></summary>
             ${item.topics.length ? `
               <div class="class-topic-buttons">
                 ${item.topics.map(topic => `<button type="button" class="class-topic-button ${topic.id === selectedTopicId ? 'active' : ''}" data-action="select-class-topic" data-class-id="${esc(item.id)}" data-topic-id="${esc(topic.id)}" aria-pressed="${topic.id === selectedTopicId}"><span>${esc(topic.name)}</span><b>${state.tasks.filter(task => task.class_id === item.id && task.topic_id === topic.id).length}</b></button>`).join('')}
               </div>
               <div class="class-topic-tasks">
                 ${selectedTopic
-                  ? `<div class="class-topic-heading"><h3>${esc(selectedTopic.name)}</h3><span class="pill">${topicTasks.length} tareas</span></div>${topicTasks.length ? topicTasks.map(taskRow).join('') : emptyState('check', 'No hay tareas en esta unidad', 'Cuando se agregue una tarea con este tema aparecerá aquí.')}`
-                  : `<div class="class-topic-placeholder"><span>${icon('arrow')}</span><div><strong>Elige una unidad o tema</strong><p>Las tareas permanecerán ocultas hasta que selecciones una opción.</p></div></div>`}
+                  ? `<div class="class-topic-heading"><div><span class="eyebrow">Tareas de la unidad</span><h3>${esc(selectedTopic.name)}</h3></div><span class="pill">${topicTasks.length}</span></div>${topicTasks.length ? topicTasks.map(taskRow).join('') : emptyState('✓', 'No hay tareas en esta unidad', 'Cuando se agregue una tarea con este tema aparecerá aquí.')}`
+                  : `<div class="class-topic-placeholder"><span>↖</span><div><strong>Elige una unidad o tema</strong><p>Las tareas permanecerán ocultas hasta que selecciones una opción.</p></div></div>`}
               </div>`
-              : `<div class="class-topic-placeholder"><span>${icon('plus')}</span><div><strong>Esta materia no tiene unidades</strong><p>Un administrador o gestor puede agregarlas desde el menú de tres puntos.</p></div></div>`}
+              : `<div class="class-topic-placeholder"><span>＋</span><div><strong>Esta materia no tiene unidades</strong><p>Un administrador o gestor puede agregarlas desde el menú de tres puntos.</p></div></div>`}
           </details>
         </section>` : ''}
     </article>`;
@@ -168,12 +168,12 @@ export function settingsView(state) {
   return `
     ${pageHead('Preferencias', 'Ajustes', 'Controla tu experiencia y la información del grupo.')}
     <section class="settings-layout">
-      <nav class="settings-nav surface" aria-label="Secciones de ajustes">
-        <button data-settings="profile" aria-current="${tab === 'profile' ? 'page' : 'false'}" class="${tab === 'profile' ? 'active' : ''}">Mi perfil</button>
-        <button data-settings="group" aria-current="${tab === 'group' ? 'page' : 'false'}" class="${tab === 'group' ? 'active' : ''}">Grupo</button>
-        <button data-settings="activity" aria-current="${tab === 'activity' ? 'page' : 'false'}" class="${tab === 'activity' ? 'active' : ''}">Actividad</button>
-        <button data-settings="data" aria-current="${tab === 'data' ? 'page' : 'false'}" class="${tab === 'data' ? 'active' : ''}">Datos</button>
-        ${isManager(state.group) ? `<button data-settings="trash" aria-current="${tab === 'trash' ? 'page' : 'false'}" class="${tab === 'trash' ? 'active' : ''}">Papelera</button>` : ''}
+      <nav class="settings-nav surface">
+        <button data-settings="profile" class="${tab === 'profile' ? 'active' : ''}">Mi perfil</button>
+        <button data-settings="group" class="${tab === 'group' ? 'active' : ''}">Grupo</button>
+        <button data-settings="activity" class="${tab === 'activity' ? 'active' : ''}">Actividad</button>
+        <button data-settings="data" class="${tab === 'data' ? 'active' : ''}">Datos</button>
+        ${isManager(state.group) ? `<button data-settings="trash" class="${tab === 'trash' ? 'active' : ''}">Papelera</button>` : ''}
       </nav>
       <article class="settings-content surface">${settingsContent(state)}</article>
     </section>`;
@@ -185,7 +185,7 @@ function settingsContent(state) {
     <form id="profile-form" class="stack-md">
       <div class="profile-editor"><div id="profile-preview">${avatar(state.user.name, 'large', state.user.avatar_url, state.user.avatar_color)}</div><div><label class="button secondary small" for="avatar-file">Subir foto</label><input id="avatar-file" type="file" accept="image/png,image/jpeg,image/webp" hidden><button type="button" class="button ghost small" data-action="remove-avatar">Quitar foto</button><small>La imagen se optimiza antes de guardarse.</small></div></div>
       <label>Nombre<input name="name" value="${esc(state.user.name)}" required></label>
-      <div class="form-grid"><label>Color del avatar<input name="avatar_color" type="color" value="${esc(state.user.avatar_color || '#315a4a')}"></label><label>Color principal de la página<input name="accent_color" type="color" value="${esc(state.user.accent_color || '#9d422e')}"></label></div>
+      <div class="form-grid"><label>Color del avatar<input name="avatar_color" type="color" value="${esc(state.user.avatar_color || '#4f46e5')}"></label><label>Color principal de la página<input name="accent_color" type="color" value="${esc(state.user.accent_color || '#4f46e5')}"></label></div>
       <label>Zona horaria<input name="timezone" value="${esc(state.user.timezone)}" required></label>
       <div class="setting-row"><div><strong>Recordatorios por correo</strong><p>Permite programar correos personales para tus tareas.</p></div><input class="toggle" name="email_notifications" type="checkbox" ${Number(state.user.email_notifications) ? 'checked' : ''}></div>
       <div class="setting-row"><div><strong>Tema</strong><p>Elige cómo se verá la aplicación.</p></div><select name="theme" class="role-select"><option value="system" ${state.user.theme === 'system' ? 'selected' : ''}>Sistema</option><option value="light" ${state.user.theme === 'light' ? 'selected' : ''}>Claro</option><option value="dark" ${state.user.theme === 'dark' ? 'selected' : ''}>Oscuro</option></select></div>
@@ -213,21 +213,21 @@ function settingsContent(state) {
 
   return `
     <h2>Papelera</h2><p class="muted">Recupera elementos eliminados por un gestor.</p>
-    <div class="task-list">${state.trash.length ? state.trash.map(item => `<div class="task-row"><span class="empty-icon">${icon(item.type === 'task' ? 'check' : 'book')}</span><div class="task-main"><strong>${esc(item.name)}</strong><small>${esc(item.context || (item.type === 'task' ? 'Tarea' : 'Materia'))} · ${esc(dateTime(item.deleted_at))}</small></div><div class="inline-actions"><button class="button secondary small" data-action="restore-item" data-type="${esc(item.type)}" data-id="${esc(item.id)}">Restaurar</button>${item.type === 'task' ? `<button class="button danger small" data-action="purge-task" data-id="${esc(item.id)}" data-name="${esc(item.name)}">Borrar definitivamente</button>` : ''}</div></div>`).join('') : emptyState('restore', 'La papelera está vacía', 'Los elementos eliminados aparecerán aquí.')}</div>`;
+    <div class="task-list">${state.trash.length ? state.trash.map(item => `<div class="task-row"><span class="empty-icon" style="width:36px;height:36px;margin:0">${item.type === 'task' ? '✓' : '▤'}</span><div class="task-main"><strong>${esc(item.name)}</strong><small>${esc(item.context || (item.type === 'task' ? 'Tarea' : 'Materia'))} · ${esc(dateTime(item.deleted_at))}</small></div><div class="inline-actions"><button class="button secondary small" data-action="restore-item" data-type="${esc(item.type)}" data-id="${esc(item.id)}">Restaurar</button>${item.type === 'task' ? `<button class="button danger small" data-action="purge-task" data-id="${esc(item.id)}" data-name="${esc(item.name)}">Borrar definitivamente</button>` : ''}</div></div>`).join('') : emptyState('♲', 'La papelera está vacía', 'Los elementos eliminados aparecerán aquí.')}</div>`;
 }
 
 function pushSettings(push = { loading: true }) {
-  if (push.loading) return `<section class="push-settings"><div><h3>Notificaciones push en este dispositivo</h3><p class="muted">Comprobando compatibilidad…</p></div></section>`;
+  if (push.loading) return `<section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Comprobando compatibilidad…</p></div></section>`;
   if (!push.supported && push.reason === 'ios-install') return `
-    <section class="push-settings"><div><h3>Notificaciones push en este dispositivo</h3><p class="muted">En iPhone, abre Base de Tareas desde el icono que agregaste a la pantalla principal para poder activarlas.</p></div><span class="pill">Requiere la app instalada</span></section>`;
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">En iPhone, abre Base de Tareas desde el icono que agregaste a la pantalla principal para poder activarlas.</p></div><span class="pill">Requiere la app instalada</span></section>`;
   if (!push.supported) return `
-    <section class="push-settings"><div><h3>Notificaciones push en este dispositivo</h3><p class="muted">Este navegador no permite notificaciones push. Prueba con Safari en iPhone o Chrome en Android.</p></div><span class="pill">No compatible</span></section>`;
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Este navegador no permite notificaciones push. Prueba con Safari en iPhone o Chrome en Android.</p></div><span class="pill">No compatible</span></section>`;
   if (!push.configured) return `
-    <section class="push-settings"><div><h3>Notificaciones push en este dispositivo</h3><p class="muted">La aplicación está preparada, pero falta activar las credenciales push del servidor.</p></div><span class="pill">Configuración pendiente</span></section>`;
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">La aplicación está preparada, pero falta activar las credenciales push del servidor.</p></div><span class="pill">Configuración pendiente</span></section>`;
   if (push.permission === 'denied') return `
-    <section class="push-settings"><div><h3>Notificaciones push en este dispositivo</h3><p class="muted">Las notificaciones están bloqueadas. Actívalas desde Ajustes del sistema y vuelve a abrir la aplicación.</p></div><span class="pill">Bloqueadas</span></section>`;
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Las notificaciones están bloqueadas. Actívalas desde Ajustes del sistema y vuelve a abrir la aplicación.</p></div><span class="pill">Bloqueadas</span></section>`;
   if (push.subscribed) return `
-    <section class="push-settings active"><div><h3>Notificaciones push en este dispositivo <span class="pill success">Activas</span></h3><p class="muted">Recibirás avisos de tareas, anuncios y entregas próximas incluso cuando la aplicación esté cerrada.</p></div><div class="inline-actions"><button type="button" class="button secondary small" data-action="test-push">Probar aviso</button><button type="button" class="button ghost small" data-action="disable-push">Desactivar aquí</button></div></section>`;
+    <section class="push-settings active"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push <span class="pill success">Activas</span></h3><p class="muted">Recibirás avisos de tareas, anuncios y entregas próximas incluso cuando la aplicación esté cerrada.</p></div><div class="inline-actions"><button type="button" class="button secondary small" data-action="test-push">Probar aviso</button><button type="button" class="button ghost small" data-action="disable-push">Desactivar aquí</button></div></section>`;
   return `
-    <section class="push-settings"><div><h3>Notificaciones push en este dispositivo</h3><p class="muted">Recibe tareas, anuncios y entregas próximas en la pantalla del celular. El permiso solo se aplica a este dispositivo.</p></div><button type="button" class="button secondary" data-action="enable-push">Activar notificaciones</button></section>`;
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Recibe tareas, anuncios y entregas próximas en la pantalla del celular. El permiso solo se aplica a este dispositivo.</p></div><button type="button" class="button secondary" data-action="enable-push">Activar notificaciones</button></section>`;
 }

@@ -157,8 +157,8 @@ describe('interfaz v2', () => {
     await waitFor(() => document.getElementById('view').textContent.includes('Aviso · El martes traer libreta'));
     expect(document.querySelector('.mobile-agenda').textContent).toContain('Reporte final');
     expect(document.querySelector('.mobile-agenda').textContent).toContain('El martes traer libreta y lápiz.');
-    expect(document.querySelector('.mobile-nav a[href="#classes"]')).not.toBeNull();
-    expect(document.querySelector('.mobile-nav a[href="#calendar"] small').textContent).toBe('Calendario');
+    expect(document.querySelector('.mobile-nav a[href="#announcements"]')).not.toBeNull();
+    expect(document.querySelector('.mobile-nav a[href="#calendar"] small').textContent).toBe('Agenda');
 
     document.querySelector('[data-view="settings"]').click();
     await waitFor(() => document.getElementById('view').textContent.includes('Notificaciones push'));
