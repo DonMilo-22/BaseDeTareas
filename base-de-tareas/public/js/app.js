@@ -1,5 +1,5 @@
 import { api, ApiError } from './api.js';
-import { avatar, dateInput, dateTime, emptyState, esc, isManager, roleLabel, taskRow, toast } from './ui.js';
+import { avatar, dateInput, dateTime, emptyState, esc, icon, isManager, roleLabel, taskRow, toast } from './ui.js';
 import { announcementsView, calendarView, classesView, homeView, settingsView, tasksView, teamView } from './views.js';
 import { disablePush, enablePush, getPushState, sendTestPush } from './push.js';
 
@@ -38,11 +38,18 @@ function showScreen(name) {
   Object.entries(screens).forEach(([key, element]) => { element.hidden = key !== name; });
 }
 
-function applyTheme(theme = 'system', accentColor = '#4f46e5') {
+function applyTheme(theme = 'system', accentColor = '#9d422e') {
   const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  const hex = String(accentColor || '#9d422e').replace('#', '');
+  const rgb = hex.length === 3 ? [...hex].map(value => parseInt(value + value, 16)) : [0, 2, 4].map(index => parseInt(hex.slice(index, index + 2), 16));
+  const luminance = rgb.map(value => {
+    const channel = value / 255;
+    return channel <= .03928 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+  }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  document.documentElement.style.setProperty('--primary', accentColor || '#4f46e5');
-  document.documentElement.style.setProperty('--primary-soft', `color-mix(in srgb, ${accentColor || '#4f46e5'} 15%, var(--surface))`);
+  document.documentElement.style.setProperty('--primary', accentColor || '#9d422e');
+  document.documentElement.style.setProperty('--primary-contrast', luminance > .42 ? '#17231e' : '#fffaf2');
+  document.documentElement.style.setProperty('--primary-soft', `color-mix(in srgb, ${accentColor || '#9d422e'} 16%, var(--surface))`);
 }
 
 function currentView() {
@@ -62,7 +69,12 @@ function formValues(form) {
 
 function showAuthForm(formId, activeTab = formId === 'register-form' || formId === 'register-code-form' ? 'register' : 'login') {
   authFormIds.forEach(id => { document.getElementById(id).hidden = id !== formId; });
-  document.querySelectorAll('[data-auth-tab]').forEach(item => item.classList.toggle('active', item.dataset.authTab === activeTab));
+  document.querySelectorAll('[data-auth-tab]').forEach(item => {
+    const active = item.dataset.authTab === activeTab;
+    item.classList.toggle('active', active);
+    item.setAttribute('aria-selected', String(active));
+    item.tabIndex = active ? 0 : -1;
+  });
 }
 
 function startResendCountdown(form, seconds = 60) {
@@ -171,7 +183,12 @@ function updatePendingBadge() {
 
 async function navigate() {
   state.view = currentView();
-  document.querySelectorAll('[data-view]').forEach(link => link.classList.toggle('active', link.dataset.view === state.view));
+  document.querySelectorAll('[data-view]').forEach(link => {
+    const active = link.dataset.view === state.view;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
   view.innerHTML = '<div class="skeleton"></div><div class="skeleton" style="margin-top:12px"></div>';
   try {
     if (state.view === 'home') {
@@ -202,7 +219,7 @@ async function navigate() {
     view.focus({ preventScroll: true });
   } catch (error) {
     handleError(error);
-    view.innerHTML = emptyState('!', 'No pudimos cargar esta sección', 'Comprueba tu conexión e inténtalo de nuevo.', '<button class="button secondary" data-action="retry-view">Reintentar</button>');
+    view.innerHTML = emptyState('note', 'No pudimos cargar esta sección', 'Comprueba tu conexión e inténtalo de nuevo.', '<button class="button secondary" data-action="retry-view">Reintentar</button>');
   }
 }
 
@@ -411,10 +428,10 @@ async function joinGroup(event) {
 function showGroupMenu() {
   const dialog = document.getElementById('group-menu-dialog');
   document.getElementById('group-menu-content').innerHTML = `
-    ${state.groups.filter(group => !group.archived_at).map(group => `<button class="menu-item ${group.id === state.group.id ? 'active' : ''}" data-group-id="${esc(group.id)}"><span><strong>${esc(group.name)}</strong><br><small>${esc(roleLabel(group.role))}</small></span>${group.id === state.group.id ? '✓' : ''}</button>`).join('')}
+    ${state.groups.filter(group => !group.archived_at).map(group => `<button class="menu-item ${group.id === state.group.id ? 'active' : ''}" data-group-id="${esc(group.id)}"><span><strong>${esc(group.name)}</strong><br><small>${esc(roleLabel(group.role))}</small></span>${group.id === state.group.id ? icon('check') : ''}</button>`).join('')}
     <div class="menu-separator"></div>
-    <button class="menu-item" data-menu-action="create">＋ Crear grupo</button>
-    <button class="menu-item" data-menu-action="join">→ Unirme con código</button>`;
+    <button class="menu-item" data-menu-action="create">${icon('plus')} Crear grupo</button>
+    <button class="menu-item" data-menu-action="join">${icon('arrow')} Unirme con código</button>`;
   dialog.showModal();
   dialog.onclick = async event => {
     const groupButton = event.target.closest('[data-group-id]');
@@ -485,7 +502,7 @@ async function handleViewClick(event) {
   if (action === 'toggle-task') {
     event.stopPropagation();
     const button = event.target.closest('[data-action]');
-    return toggleTask(button.dataset.taskId, button.dataset.completed !== '1');
+    return toggleTask(button.dataset.toggleTaskId, button.dataset.completed !== '1');
   }
   const exportLink = event.target.closest('[data-export]');
   if (exportLink) { exportLink.href = api.exportUrl(state.group.id, exportLink.dataset.export); exportLink.download = ''; }
@@ -644,7 +661,7 @@ function openClassForm(item) {
   form.elements.id.value = item?.id || '';
   document.getElementById('class-form-title').textContent = item ? 'Editar materia' : 'Nueva materia';
   for (const field of ['name', 'code', 'teacher', 'room', 'schedule', 'color']) if (item) form.elements[field].value = item[field] || '';
-  form.elements.color.value = item?.color || '#6366f1';
+  form.elements.color.value = item?.color || '#315a4a';
   form.elements.topics.value = (item?.topics || []).map(topic => topic.name).join('\n');
   document.getElementById('class-delete').hidden = !item;
   document.getElementById('class-dialog').showModal();
@@ -679,17 +696,17 @@ function renderTaskDetail(data) {
   const { task } = data;
   document.getElementById('task-detail-content').innerHTML = `
     <div class="detail-hero">
-      <div style="display:flex;justify-content:space-between;gap:12px"><span class="pill"><span class="dot" style="background:${esc(task.class_color)}"></span>${esc(task.class_name)}</span><button class="icon-button" data-detail-action="close">×</button></div>
+      <div style="display:flex;justify-content:space-between;gap:12px"><span class="pill"><span class="dot" style="background:${esc(task.class_color)}"></span>${esc(task.class_name)}</span><button class="icon-button" data-detail-action="close" aria-label="Cerrar detalle">${icon('close')}</button></div>
       <h2>${esc(task.title)}</h2><p class="muted">Entrega ${esc(dateTime(task.due_at))}</p>
-      <div class="detail-actions"><button class="button ${Number(task.completed) ? 'secondary' : 'primary'}" data-detail-action="toggle" data-completed="${Number(task.completed)}">${Number(task.completed) ? '✓ Completada' : 'Marcar completada'}</button>${isManager(state.group) ? '<button class="button secondary" data-detail-action="edit">Editar</button><button class="button danger" data-detail-action="delete">Eliminar</button>' : ''}</div>
+      <div class="detail-actions"><button class="button ${Number(task.completed) ? 'secondary' : 'primary'}" data-detail-action="toggle" data-completed="${Number(task.completed)}">${Number(task.completed) ? `${icon('check')} Completada` : 'Marcar completada'}</button>${isManager(state.group) ? '<button class="button secondary" data-detail-action="edit">Editar</button><button class="button danger" data-detail-action="delete">Eliminar</button>' : ''}</div>
     </div>
     <div class="detail-sections">
-      ${task.description ? `<section class="detail-section"><h3>Instrucciones</h3><p style="white-space:pre-wrap;line-height:1.65">${esc(task.description)}</p></section>` : ''}
-      <section class="detail-section"><h3>Pasos</h3><div class="checklist">${data.subtasks.length ? data.subtasks.map(item => `<label><input type="checkbox" data-detail-action="subtask" data-subtask-id="${esc(item.id)}" ${Number(item.completed) ? 'checked' : ''}><span>${esc(item.title)}</span></label>`).join('') : '<p class="muted">Esta tarea no tiene pasos adicionales.</p>'}</div></section>
-      <section class="detail-section"><h3>Recordatorios</h3><div class="stack-sm">${data.reminders.length ? data.reminders.map(item => `<div class="setting-row"><div><strong>${esc(dateTime(item.remind_at))}</strong><p>${esc(item.status === 'scheduled' ? 'Correo programado' : item.status === 'pending' ? 'En cola para programarse' : item.status === 'failed' ? 'No se pudo programar' : item.status)}</p></div><button class="button ghost small" data-detail-action="delete-reminder" data-reminder-id="${esc(item.id)}">Cancelar</button></div>`).join('') : '<p class="muted">No tienes recordatorios para esta tarea.</p>'}</div><form class="inline-form" id="reminder-form"><input type="datetime-local" name="remind_at" min="${dateInput(new Date(Date.now() + 120000))}" required><button class="button secondary">Programar correo</button></form></section>
-      <section class="detail-section"><h3>Comentarios</h3><div>${data.comments.length ? data.comments.map(comment => `<div class="comment">${avatar(comment.user_name, 'small')}<div class="comment-bubble"><small><strong>${esc(comment.user_name)}</strong> · ${esc(dateTime(comment.created_at))}</small><p>${esc(comment.body)}</p></div></div>`).join('') : '<p class="muted">Todavía no hay comentarios.</p>'}</div><form class="inline-form" id="comment-form"><input name="body" maxlength="2000" placeholder="Escribe una aclaración…" required><button class="button secondary">Enviar</button></form></section>
-      <section class="detail-section"><h3>Archivos y enlaces</h3>${data.attachments.length ? data.attachments.map(item => `<p><a class="text-link" href="${esc(item.url)}" target="_blank" rel="noopener">↗ ${esc(item.name)}</a></p>`).join('') : '<p class="muted">No hay archivos adjuntos.</p>'}${isManager(state.group) ? '<form class="inline-form" id="attachment-form"><input name="name" placeholder="Nombre del archivo" required><input name="url" type="url" placeholder="https://…" required><button class="button secondary">Añadir</button></form>' : ''}</section>
-      ${data.member_progress.length ? `<section class="detail-section"><h3>Avance del equipo</h3><div class="class-topics">${data.member_progress.map(member => `<span class="pill ${member.completed_at ? 'success' : ''}">${esc(member.name)} ${member.completed_at ? '✓' : '·'}</span>`).join('')}</div></section>` : ''}
+      ${task.description ? `<details class="detail-section" open><summary><h3>Instrucciones</h3>${icon('chevron', 'collapse-chevron')}</summary><div class="detail-section-body"><p style="white-space:pre-wrap;line-height:1.65">${esc(task.description)}</p></div></details>` : ''}
+      <details class="detail-section" open><summary><h3>Pasos</h3><span class="detail-count">${data.subtasks.length}</span></summary><div class="detail-section-body"><div class="checklist">${data.subtasks.length ? data.subtasks.map(item => `<label><input type="checkbox" data-detail-action="subtask" data-subtask-id="${esc(item.id)}" ${Number(item.completed) ? 'checked' : ''}><span>${esc(item.title)}</span></label>`).join('') : '<p class="muted">Esta tarea no tiene pasos adicionales.</p>'}</div></div></details>
+      <details class="detail-section"><summary><h3>Recordatorios</h3><span class="detail-count">${data.reminders.length}</span></summary><div class="detail-section-body"><div class="stack-sm">${data.reminders.length ? data.reminders.map(item => `<div class="setting-row"><div><strong>${esc(dateTime(item.remind_at))}</strong><p>${esc(item.status === 'scheduled' ? 'Correo programado' : item.status === 'pending' ? 'En cola para programarse' : item.status === 'failed' ? 'No se pudo programar' : item.status)}</p></div><button class="button ghost small" data-detail-action="delete-reminder" data-reminder-id="${esc(item.id)}">Cancelar</button></div>`).join('') : '<p class="muted">No tienes recordatorios para esta tarea.</p>'}</div><form class="inline-form" id="reminder-form"><input type="datetime-local" name="remind_at" aria-label="Fecha del recordatorio" min="${dateInput(new Date(Date.now() + 120000))}" required><button class="button secondary">Programar correo</button></form></div></details>
+      <details class="detail-section"><summary><h3>Comentarios</h3><span class="detail-count">${data.comments.length}</span></summary><div class="detail-section-body"><div>${data.comments.length ? data.comments.map(comment => `<div class="comment">${avatar(comment.user_name, 'small')}<div class="comment-bubble"><small><strong>${esc(comment.user_name)}</strong> · ${esc(dateTime(comment.created_at))}</small><p>${esc(comment.body)}</p></div></div>`).join('') : '<p class="muted">Todavía no hay comentarios.</p>'}</div><form class="inline-form" id="comment-form"><input name="body" maxlength="2000" aria-label="Nuevo comentario" placeholder="Escribe una aclaración…" required><button class="button secondary">Enviar</button></form></div></details>
+      <details class="detail-section"><summary><h3>Archivos y enlaces</h3><span class="detail-count">${data.attachments.length}</span></summary><div class="detail-section-body">${data.attachments.length ? data.attachments.map(item => `<p><a class="text-link" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.name)}</a></p>`).join('') : '<p class="muted">No hay archivos adjuntos.</p>'}${isManager(state.group) ? '<form class="inline-form" id="attachment-form"><input name="name" aria-label="Nombre del archivo" placeholder="Nombre del archivo" required><input name="url" type="url" aria-label="Enlace del archivo" placeholder="https://…" required><button class="button secondary">Añadir</button></form>' : ''}</div></details>
+      ${data.member_progress.length ? `<details class="detail-section"><summary><h3>Avance del equipo</h3><span class="detail-count">${data.member_progress.filter(member => member.completed_at).length}/${data.member_progress.length}</span></summary><div class="detail-section-body class-topics">${data.member_progress.map(member => `<span class="pill ${member.completed_at ? 'success' : ''}">${esc(member.name)}${member.completed_at ? ` ${icon('check')}` : ''}</span>`).join('')}</div></details>` : ''}
     </div>`;
   document.getElementById('task-detail-content').dataset.taskId = task.id;
   document.getElementById('task-detail-content')._task = task;
@@ -744,7 +761,7 @@ function renderSearchResults() {
   const term = document.getElementById('global-search-input').value.trim().toLowerCase();
   const results = state.tasks.filter(task => !term || task.title.toLowerCase().includes(term) || String(task.description).toLowerCase().includes(term)).slice(0, 12);
   const container = document.getElementById('global-search-results');
-  container.innerHTML = results.length ? results.map(taskRow).join('') : emptyState('⌕', 'Sin resultados', 'Prueba con otras palabras.');
+  container.innerHTML = results.length ? results.map(taskRow).join('') : emptyState('search', 'Sin resultados', 'Prueba con otras palabras.');
   container.querySelectorAll('[data-task-id]').forEach(item => item.addEventListener('click', event => { if (event.target.closest('[data-action]')) return; document.getElementById('search-dialog').close(); openTaskDetail(item.dataset.taskId); }));
 }
 
