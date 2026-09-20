@@ -115,8 +115,7 @@ test('la experiencia móvil permite recorrer y operar todas las vistas', async (
   await expect(page.locator('.class-topic-tasks').getByText('Prueba responsiva')).toBeVisible();
   await assertNoOverflow();
 
-  await page.locator('#mobile-menu').click();
-  await page.locator('#sidebar a[href="#announcements"]').click();
+  await page.locator('.mobile-nav a[href="#announcements"]').click();
   await page.getByRole('button', { name: /Nuevo anuncio/ }).click();
   await page.locator('#announcement-form textarea[name="body"]').fill('Llevar libreta mañana');
   await page.locator('#announcement-form input[name="event_at"]').fill(calendarValue);
