@@ -191,6 +191,7 @@ function settingsContent(state) {
       <div class="setting-row"><div><strong>Tema</strong><p>Elige cómo se verá la aplicación.</p></div><select name="theme" class="role-select"><option value="system" ${state.user.theme === 'system' ? 'selected' : ''}>Sistema</option><option value="light" ${state.user.theme === 'light' ? 'selected' : ''}>Claro</option><option value="dark" ${state.user.theme === 'dark' ? 'selected' : ''}>Oscuro</option></select></div>
       <button class="button primary" type="submit">Guardar cambios</button>
     </form>
+    ${pushSettings(state.push)}
     <div class="danger-zone"><h3>Sesión</h3><p class="muted">Cierra tu sesión en este dispositivo.</p><button class="button danger" data-action="logout">Cerrar sesión</button></div>`;
 
   if (state.settingsTab === 'group') return `
@@ -213,4 +214,20 @@ function settingsContent(state) {
   return `
     <h2>Papelera</h2><p class="muted">Recupera elementos eliminados por un gestor.</p>
     <div class="task-list">${state.trash.length ? state.trash.map(item => `<div class="task-row"><span class="empty-icon" style="width:36px;height:36px;margin:0">${item.type === 'task' ? '✓' : '▤'}</span><div class="task-main"><strong>${esc(item.name)}</strong><small>${esc(item.context || (item.type === 'task' ? 'Tarea' : 'Materia'))} · ${esc(dateTime(item.deleted_at))}</small></div><div class="inline-actions"><button class="button secondary small" data-action="restore-item" data-type="${esc(item.type)}" data-id="${esc(item.id)}">Restaurar</button>${item.type === 'task' ? `<button class="button danger small" data-action="purge-task" data-id="${esc(item.id)}" data-name="${esc(item.name)}">Borrar definitivamente</button>` : ''}</div></div>`).join('') : emptyState('♲', 'La papelera está vacía', 'Los elementos eliminados aparecerán aquí.')}</div>`;
+}
+
+function pushSettings(push = { loading: true }) {
+  if (push.loading) return `<section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Comprobando compatibilidad…</p></div></section>`;
+  if (!push.supported && push.reason === 'ios-install') return `
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">En iPhone, abre Base de Tareas desde el icono que agregaste a la pantalla principal para poder activarlas.</p></div><span class="pill">Requiere la app instalada</span></section>`;
+  if (!push.supported) return `
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Este navegador no permite notificaciones push. Prueba con Safari en iPhone o Chrome en Android.</p></div><span class="pill">No compatible</span></section>`;
+  if (!push.configured) return `
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">La aplicación está preparada, pero falta activar las credenciales push del servidor.</p></div><span class="pill">Configuración pendiente</span></section>`;
+  if (push.permission === 'denied') return `
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Las notificaciones están bloqueadas. Actívalas desde Ajustes del sistema y vuelve a abrir la aplicación.</p></div><span class="pill">Bloqueadas</span></section>`;
+  if (push.subscribed) return `
+    <section class="push-settings active"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push <span class="pill success">Activas</span></h3><p class="muted">Recibirás avisos de tareas, anuncios y entregas próximas incluso cuando la aplicación esté cerrada.</p></div><div class="inline-actions"><button type="button" class="button secondary small" data-action="test-push">Probar aviso</button><button type="button" class="button ghost small" data-action="disable-push">Desactivar aquí</button></div></section>`;
+  return `
+    <section class="push-settings"><div><span class="eyebrow">Este dispositivo</span><h3>Notificaciones push</h3><p class="muted">Recibe tareas, anuncios y entregas próximas en la pantalla del celular. El permiso solo se aplica a este dispositivo.</p></div><button type="button" class="button secondary" data-action="enable-push">Activar notificaciones</button></section>`;
 }

@@ -2,7 +2,7 @@
 
 Aplicación web colaborativa para organizar materias, tareas, anuncios y recordatorios escolares dentro de grupos privados.
 
-**Versión actual:** 2.4.0
+**Versión actual:** 2.5.0
 
 **Aplicación:** [basedetareas.vercel.app](https://basedetareas.vercel.app)
 
@@ -62,6 +62,8 @@ Nadie puede seleccionar un rol privilegiado durante el registro. La persona que 
 - Recordatorios personales programados para la fecha y hora elegidas.
 - Cancelación local y en Resend cuando se elimina un recordatorio.
 - Cola automática para recordatorios que todavía están fuera de la ventana de programación de Resend.
+- Notificaciones push opcionales para tareas nuevas, anuncios y entregas próximas.
+- Compatibilidad con la PWA instalada en iPhone, iPad y Android.
 
 ### Experiencia y personalización
 
@@ -152,6 +154,9 @@ TURSO_AUTH_TOKEN=
 | `RESEND_FROM_EMAIL` | No | Alias compatible de `EMAIL_FROM`. |
 | `EMAIL_RECIPIENT_OVERRIDE` | Solo pruebas | Redirige todos los correos a una dirección controlada. Debe eliminarse en producción. |
 | `CRON_SECRET` | Para el cron | Protege la ejecución del procesamiento diario de recordatorios. |
+| `VAPID_PUBLIC_KEY` | Para push | Clave pública utilizada por el navegador para crear la suscripción. |
+| `VAPID_PRIVATE_KEY` | Para push | Clave privada del servidor; nunca debe incluirse en el código del cliente. |
+| `VAPID_SUBJECT` | Para push | URL HTTPS o contacto `mailto:` que identifica al emisor. |
 | `PORT` | No | Puerto local; usa `3000` por defecto. |
 
 Puedes generar secretos seguros con:
@@ -197,6 +202,18 @@ Resend se utiliza para:
 
 Los correos programados con hasta 29 días de anticipación se envían directamente a Resend. Los recordatorios más lejanos permanecen pendientes y el cron diario los programa cuando entran en esa ventana.
 
+## Configurar notificaciones push
+
+Genera un par de claves VAPID una sola vez:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Guarda el resultado en `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY`, y configura `VAPID_SUBJECT` con la URL pública de la aplicación. Los usuarios podrán activar o desactivar las notificaciones de cada dispositivo desde **Ajustes → Mi perfil**. En iPhone y iPad la página debe estar agregada a la pantalla principal; en Android funciona como PWA instalada.
+
+Las claves VAPID no sustituyen a Resend. Web Push se utiliza para tareas nuevas, anuncios y el aviso diario de entregas dentro de las próximas 24 horas; los recordatorios personales con hora exacta continúan enviándose por correo.
+
 ## Despliegue en Vercel
 
 1. Importa el repositorio en Vercel.
@@ -225,7 +242,7 @@ npm run smoke        # comprobación de un despliegue
 npm audit --omit=dev
 ```
 
-La versión 2.4.0 cuenta con pruebas para registro verificado, expiración y bloqueo de códigos, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, filtrado de tareas por unidad, recordatorios, anuncios, papelera, exportaciones e interfaz móvil.
+La versión 2.5.0 cuenta con pruebas para registro verificado, expiración y bloqueo de códigos, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, filtrado de tareas por unidad, suscripciones push, recordatorios, anuncios, papelera, exportaciones e interfaz móvil.
 
 ## Seguridad
 

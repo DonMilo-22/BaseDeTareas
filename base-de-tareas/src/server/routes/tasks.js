@@ -10,6 +10,7 @@ import { asyncRoute } from '../middleware.js';
 import { requireMembership } from '../permissions.js';
 import { taskInGroup } from '../resources.js';
 import { cancelTaskReminders } from '../reminder-cleanup.js';
+import { sendPushToGroup } from '../push.js';
 import { booleanFromQuery, idSchema, isoDateSchema, parse } from '../validation.js';
 
 const router = Router({ mergeParams: true });
@@ -106,7 +107,23 @@ router.post('/', asyncRoute(async (req, res) => {
     console.error('La tarea se creó, pero el aviso por correo falló:', error);
     emailNotification.failed += 1;
   }
-  res.status(201).json({ task: { id: taskId, group_id: groupId, ...input }, email_notification: emailNotification });
+  let pushNotification = { attempted: 0, sent: 0, failed: 0, expired: 0 };
+  try {
+    const classResult = await getDb().execute({
+      sql: 'SELECT name FROM classes WHERE id = ? AND group_id = ?',
+      args: [input.class_id, groupId],
+    });
+    pushNotification = await sendPushToGroup(groupId, {
+      title: 'Nueva tarea',
+      body: `${classResult.rows[0]?.name || 'Materia'} · ${input.title}`,
+      url: `/?group=${encodeURIComponent(groupId)}&task=${encodeURIComponent(taskId)}#tasks`,
+      tag: `task-${taskId}`,
+    }, { excludeUserId: req.user.id });
+  } catch (error) {
+    console.error('La tarea se creó, pero el aviso push falló:', error);
+    pushNotification.failed += 1;
+  }
+  res.status(201).json({ task: { id: taskId, group_id: groupId, ...input }, email_notification: emailNotification, push_notification: pushNotification });
 }));
 
 router.get('/:taskId', asyncRoute(async (req, res) => {

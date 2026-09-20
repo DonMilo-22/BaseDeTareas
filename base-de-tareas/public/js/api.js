@@ -41,6 +41,10 @@ export const api = {
   me: () => request('/api/auth/me'),
   updateProfile: data => request('/api/auth/me', json('PATCH', data)),
   deleteAccount: () => request('/api/auth/me', { method: 'DELETE' }),
+  pushConfig: () => request('/api/push/config'),
+  subscribePush: subscription => request('/api/push/subscriptions', json('POST', subscription)),
+  unsubscribePush: endpoint => request('/api/push/subscriptions', json('DELETE', { endpoint })),
+  testPush: () => request('/api/push/test', { method: 'POST' }),
 
   groups: () => request('/api/groups'),
   createGroup: data => request('/api/groups', json('POST', data)),

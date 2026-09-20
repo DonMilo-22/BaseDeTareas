@@ -1,6 +1,6 @@
 {
   "name": "base-de-tareas",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": true,
   "description": "Organizador escolar colaborativo para Vercel y Turso",
   "type": "module",
@@ -29,6 +29,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "resend": "^6.1.2",
+    "web-push": "^3.6.7",
     "zod": "^4.1.8"
   },
   "devDependencies": {

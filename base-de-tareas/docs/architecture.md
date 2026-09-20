@@ -7,6 +7,7 @@
 - Permisos explícitos y verificables en cada operación.
 - Interfaz centrada en lo que el estudiante necesita hacer hoy.
 - Recordatorios de correo idempotentes y seguros.
+- Suscripciones Web Push independientes por usuario y dispositivo.
 - Migraciones reproducibles; nunca se altera el esquema durante una petición normal.
 
 ## Roles
@@ -56,6 +57,16 @@ se considera una medida de seguridad.
 
 `RESEND_API_KEY`, `EMAIL_FROM` y `CRON_SECRET` habilitan el flujo real; en pruebas se utiliza un
 adaptador de correo falso. La clave idempotente evita duplicados si el cron reintenta una petición.
+
+## Notificaciones push
+
+- El navegador crea la suscripción mediante el estándar Web Push y una clave pública VAPID.
+- Turso conserva el endpoint y sus claves como datos sensibles ligados al usuario; nunca se devuelven al cliente después de registrarlos.
+- La clave privada VAPID permanece exclusivamente en las variables de entorno del servidor.
+- Una tarea o anuncio nuevo genera un push para los demás integrantes que lo hayan activado.
+- El cron diario envía una sola notificación por usuario para cada tarea pendiente que vence dentro de 24 horas; `push_notification_log` evita duplicados.
+- Los endpoints expirados se eliminan cuando el proveedor responde con `404` o `410`.
+- Una falla del proveedor push no revierte la creación de una tarea o anuncio ni afecta los correos de Resend.
 
 ## Decisiones de datos
 

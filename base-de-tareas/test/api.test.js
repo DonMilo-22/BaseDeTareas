@@ -8,6 +8,8 @@ process.env.JWT_SECRET = 'test-secret-with-more-than-thirty-two-characters';
 process.env.APP_URL = 'http://localhost:3000';
 process.env.CRON_SECRET = 'test-cron-secret';
 process.env.EMAIL_RECIPIENT_OVERRIDE = 'pruebas@correo.com';
+process.env.VAPID_PUBLIC_KEY = 'BCKk69OU41zHmKeoPUKuVLqMyk-pFliL1EsLAU1_8VAqBTDxs6FerxqzSWdT75b9gYYODSmbOsTNk5YiP3teJ_Y';
+process.env.VAPID_PRIVATE_KEY = '76vT2Uwh9fejouMoPP7-jd4lHNR67un-yp0GcJYk9Do';
 
 let app;
 let db;
@@ -49,7 +51,7 @@ beforeAll(async () => {
 describe('Base de Tareas v2 API', () => {
   it('reports a healthy database', async () => {
     const response = await request(app).get('/api/health').expect(200);
-    expect(response.body).toMatchObject({ ok: true, version: '2.4.0' });
+    expect(response.body).toMatchObject({ ok: true, version: '2.5.0' });
   });
 
   it('verifies email before registering users and never accepts a requested role', async () => {
@@ -118,6 +120,24 @@ describe('Base de Tareas v2 API', () => {
     expect(updated.body.user).toMatchObject({ avatar_url: avatar, avatar_color: '#0f766e', accent_color: '#db2777' });
     const me = await admin.get('/api/auth/me').expect(200);
     expect(me.body.user.accent_color).toBe('#db2777');
+  });
+
+  it('registers and tests a Web Push subscription without exposing its keys', async () => {
+    const config = await admin.get('/api/push/config').expect(200);
+    expect(config.body).toMatchObject({ configured: true, devices: 0 });
+    expect(config.body.public_key).toBe(process.env.VAPID_PUBLIC_KEY);
+    await admin.post('/api/push/subscriptions').send({
+      endpoint: 'https://push.example.test/admin-device',
+      keys: {
+        p256dh: 'test-p256dh-key-with-enough-length',
+        auth: 'test-auth-key',
+      },
+    }).expect(201);
+    const active = await admin.get('/api/push/config').expect(200);
+    expect(active.body.devices).toBe(1);
+    expect(active.body).not.toHaveProperty('subscriptions');
+    const testPush = await admin.post('/api/push/test').expect(200);
+    expect(testPush.body).toMatchObject({ attempted: 1, sent: 1, failed: 0 });
   });
 
   it('keeps prefixed IDs from the previous production app usable', async () => {
@@ -209,6 +229,7 @@ describe('Base de Tareas v2 API', () => {
     }).expect(201);
     taskId = task.body.task.id;
     expect(task.body.email_notification).toMatchObject({ attempted: 1, sent: 1, failed: 0 });
+    expect(task.body.push_notification).toMatchObject({ attempted: 1, sent: 1, failed: 0 });
     const detail = await admin.get(`/api/groups/${groupId}/tasks/${taskId}`).expect(200);
     expect(detail.body.subtasks).toHaveLength(2);
     subtaskId = detail.body.subtasks[0].id;
@@ -246,6 +267,7 @@ describe('Base de Tareas v2 API', () => {
       remind_at: remindAt,
     }).expect(201);
     expect(created.body.announcement.reminder_status).toBe('scheduled');
+    expect(created.body.push_notification).toMatchObject({ attempted: 1, sent: 1, failed: 0 });
     const announcementId = created.body.announcement.id;
     const list = await member.get(`/api/groups/${groupId}/announcements`).expect(200);
     expect(list.body.announcements[0]).toMatchObject({ id: announcementId, event_at: eventAt });
@@ -285,9 +307,13 @@ describe('Base de Tareas v2 API', () => {
     const cron = await request(app).get('/api/cron/reminders').set('Authorization', 'Bearer test-cron-secret').expect(200);
     expect(cron.body.scheduled).toBe(1);
     expect(cron.body.automatic).toMatchObject({ tasks_due_soon: 1, sent: 1 });
+    expect(cron.body.push).toMatchObject({ tasks_due_soon: 1, sent: 1, failed: 0 });
     const repeated = await request(app).get('/api/cron/reminders').set('Authorization', 'Bearer test-cron-secret').expect(200);
     expect(repeated.body.automatic.sent).toBe(0);
     expect(repeated.body.automatic.skipped).toBeGreaterThan(0);
+    expect(repeated.body.push.sent).toBe(0);
+    expect(repeated.body.push.skipped).toBeGreaterThan(0);
+    await admin.delete('/api/push/subscriptions').send({ endpoint: 'https://push.example.test/admin-device' }).expect(204);
   });
 
   it('rejects unsafe attachment protocols', async () => {

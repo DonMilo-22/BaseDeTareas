@@ -1,6 +1,7 @@
 import { api, ApiError } from './api.js';
 import { avatar, dateInput, dateTime, emptyState, esc, isManager, roleLabel, taskRow, toast } from './ui.js';
 import { announcementsView, calendarView, classesView, homeView, settingsView, tasksView, teamView } from './views.js';
+import { disablePush, enablePush, getPushState, sendTestPush } from './push.js';
 
 const state = {
   user: null,
@@ -17,6 +18,7 @@ const state = {
   settingsTab: 'profile',
   expandedClassId: null,
   selectedTopicByClass: {},
+  push: { loading: true },
   filters: { search: '', class_id: '', status: '' },
   calendarDate: new Date(),
   avatarDraft: undefined,
@@ -194,6 +196,7 @@ async function navigate() {
     } else {
       if (state.settingsTab === 'trash' && isManager(state.group)) state.trash = (await api.trash(state.group.id)).items;
       if (state.settingsTab === 'activity') state.activity = (await api.activity(state.group.id)).activity;
+      if (state.settingsTab === 'profile') state.push = await getPushState();
       view.innerHTML = settingsView(state);
     }
     view.focus({ preventScroll: true });
@@ -454,6 +457,9 @@ async function handleViewClick(event) {
   if (action === 'retry-view') return navigate();
   if (action === 'copy-code') return copyCode();
   if (action === 'logout') return logout();
+  if (action === 'enable-push') return updatePushSubscription('enable', event.target.closest('[data-action]'));
+  if (action === 'disable-push') return updatePushSubscription('disable', event.target.closest('[data-action]'));
+  if (action === 'test-push') return testPush(event.target.closest('[data-action]'));
   if (action === 'show-activity') { state.settingsTab = 'activity'; location.hash = 'settings'; return; }
   if (action === 'calendar-prev' || action === 'calendar-next') {
     state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth() + (action === 'calendar-next' ? 1 : -1), 1);
@@ -531,9 +537,32 @@ view.addEventListener('click', async event => {
     state.settingsTab = setting.dataset.settings;
     if (state.settingsTab === 'trash' && isManager(state.group)) state.trash = (await api.trash(state.group.id)).items;
     if (state.settingsTab === 'activity') state.activity = (await api.activity(state.group.id)).activity;
+    if (state.settingsTab === 'profile') state.push = await getPushState();
     view.innerHTML = settingsView(state);
   }
 });
+
+async function updatePushSubscription(action, button) {
+  button.disabled = true;
+  try {
+    state.push = action === 'enable' ? await enablePush(state.push.publicKey) : await disablePush();
+    view.innerHTML = settingsView(state);
+    toast(action === 'enable' ? 'Notificaciones activadas en este dispositivo.' : 'Notificaciones desactivadas en este dispositivo.', 'success');
+  } catch (error) {
+    handleError(error);
+    state.push = await getPushState();
+    view.innerHTML = settingsView(state);
+  }
+}
+
+async function testPush(button) {
+  button.disabled = true;
+  try {
+    await sendTestPush();
+    toast('Aviso de prueba enviado.', 'success');
+  } catch (error) { handleError(error); }
+  finally { button.disabled = false; }
+}
 
 async function refreshTasksView() {
   await reloadTasks();
