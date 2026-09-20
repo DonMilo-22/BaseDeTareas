@@ -9,6 +9,7 @@ import {
 } from '../email.js';
 import { AppError } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
+import { sendPushToUsers } from '../push.js';
 
 const router = Router();
 const scheduleWindowMs = 29 * 24 * 60 * 60 * 1000;
@@ -184,6 +185,50 @@ router.get('/reminders', requireCron, asyncRoute(async (_req, res) => {
     }
   }
 
+  const pushDueSoon = await getDb().execute({
+    sql: `SELECT t.id, t.group_id, t.title, t.due_at, c.name AS class_name, u.id AS user_id
+          FROM tasks t
+          JOIN classes c ON c.id = t.class_id
+          JOIN group_members gm ON gm.group_id = t.group_id
+          JOIN users u ON u.id = gm.user_id
+          LEFT JOIN task_completions tc ON tc.task_id = t.id AND tc.user_id = u.id
+          WHERE t.deleted_at IS NULL AND c.deleted_at IS NULL AND u.deleted_at IS NULL
+            AND tc.task_id IS NULL AND t.due_at > ? AND t.due_at <= ?
+            AND EXISTS (SELECT 1 FROM push_subscriptions ps WHERE ps.user_id = u.id)
+          ORDER BY t.due_at LIMIT 500`,
+    args: [now.toISOString(), dueHorizon],
+  });
+  let pushSent = 0;
+  let pushSkipped = 0;
+  let pushFailed = 0;
+  for (const source of pushDueSoon.rows) {
+    const reservation = await getDb().execute({
+      sql: `INSERT OR IGNORE INTO push_notification_log
+            (user_id, entity_type, entity_id, notification_type)
+            VALUES (?, 'task', ?, 'due_24h')`,
+      args: [source.user_id, source.id],
+    });
+    if (!Number(reservation.rowsAffected)) {
+      pushSkipped += 1;
+      continue;
+    }
+    const result = await sendPushToUsers([source.user_id], {
+      title: 'Entrega próxima',
+      body: `${source.class_name} · ${source.title}`,
+      url: `/?group=${encodeURIComponent(source.group_id)}&task=${encodeURIComponent(source.id)}#tasks`,
+      tag: `task-due-${source.id}`,
+    });
+    if (result.sent) pushSent += 1;
+    else {
+      pushFailed += 1;
+      await getDb().execute({
+        sql: `DELETE FROM push_notification_log
+              WHERE user_id = ? AND entity_type = 'task' AND entity_id = ? AND notification_type = 'due_24h'`,
+        args: [source.user_id, source.id],
+      });
+    }
+  }
+
   res.json({
     ok: true,
     queued: result.rows.length,
@@ -197,6 +242,12 @@ router.get('/reminders', requireCron, asyncRoute(async (_req, res) => {
       sent: automaticSent,
       skipped: automaticSkipped,
       failed: automaticFailed,
+    },
+    push: {
+      tasks_due_soon: new Set(pushDueSoon.rows.map(item => item.id)).size,
+      sent: pushSent,
+      skipped: pushSkipped,
+      failed: pushFailed,
     },
   });
 }));

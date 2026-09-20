@@ -8,6 +8,7 @@ import { cancelReminderEmail, scheduleAnnouncementReminderEmail } from '../email
 import { AppError, forbidden, notFound } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
 import { requireMembership } from '../permissions.js';
+import { sendPushToGroup } from '../push.js';
 import { idSchema, isoDateSchema, parse } from '../validation.js';
 
 const router = Router({ mergeParams: true });
@@ -99,7 +100,19 @@ router.post('/', asyncRoute(async (req, res) => {
     throw error;
   }
   await logActivity({ groupId, userId: req.user.id, action: 'announcement.created', entityType: 'announcement', entityId: announcement.id, summary: 'Publicó un anuncio.' });
-  res.status(201).json({ announcement: { ...announcement, user_name: req.user.name, reminder_id: reminder?.id || null, remind_at: reminder?.remind_at || null, reminder_status: reminder?.status || null } });
+  let pushNotification = { attempted: 0, sent: 0, failed: 0, expired: 0 };
+  try {
+    pushNotification = await sendPushToGroup(groupId, {
+      title: `Nuevo anuncio de ${req.user.name}`,
+      body: announcement.body,
+      url: `/?group=${encodeURIComponent(groupId)}#announcements`,
+      tag: `announcement-${announcement.id}`,
+    }, { excludeUserId: req.user.id });
+  } catch (error) {
+    console.error('El anuncio se creó, pero el aviso push falló:', error);
+    pushNotification.failed += 1;
+  }
+  res.status(201).json({ announcement: { ...announcement, user_name: req.user.name, reminder_id: reminder?.id || null, remind_at: reminder?.remind_at || null, reminder_status: reminder?.status || null }, push_notification: pushNotification });
 }));
 
 router.patch('/:announcementId', asyncRoute(async (req, res) => {

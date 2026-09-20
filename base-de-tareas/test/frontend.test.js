@@ -159,6 +159,10 @@ describe('interfaz v2', () => {
     expect(document.querySelector('.mobile-agenda').textContent).toContain('El martes traer libreta y lápiz.');
     expect(document.querySelector('.mobile-nav a[href="#announcements"]')).not.toBeNull();
     expect(document.querySelector('.mobile-nav a[href="#calendar"] small').textContent).toBe('Agenda');
+
+    document.querySelector('[data-view="settings"]').click();
+    await waitFor(() => document.getElementById('view').textContent.includes('Notificaciones push'));
+    expect(document.querySelector('.push-settings').textContent).toContain('No compatible');
   });
 
   it('includes the actor name in activity sentences', async () => {

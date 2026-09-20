@@ -143,5 +143,6 @@ test('la experiencia móvil permite recorrer y operar todas las vistas', async (
 
   await page.locator('.mobile-nav a[href="#settings"]').click();
   await expect(page.getByRole('heading', { name: 'Ajustes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Notificaciones push/ })).toBeVisible();
   await assertNoOverflow();
 });

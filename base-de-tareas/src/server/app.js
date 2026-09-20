@@ -11,6 +11,7 @@ import reminderRoutes from './routes/reminders.js';
 import extraRoutes from './routes/extras.js';
 import cronRoutes from './routes/cron.js';
 import announcementRoutes from './routes/announcements.js';
+import pushRoutes from './routes/push.js';
 import { checkDatabase, ensureRuntimeSchema } from './db.js';
 import { asyncRoute, errorHandler, notFoundHandler, requireSameOrigin } from './middleware.js';
 
@@ -44,7 +45,7 @@ app.use(asyncRoute(async (_req, _res, next) => {
 
 app.get('/api/health', async (_req, res, next) => {
   try {
-    res.json({ ok: await checkDatabase(), version: '2.4.0' });
+    res.json({ ok: await checkDatabase(), version: '2.5.0' });
   } catch (error) {
     next(error);
   }
@@ -52,6 +53,7 @@ app.get('/api/health', async (_req, res, next) => {
 
 app.use('/api/cron', cronRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/push', pushRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/groups/:groupId/classes', classRoutes);
 app.use('/api/groups/:groupId/tasks', taskRoutes);

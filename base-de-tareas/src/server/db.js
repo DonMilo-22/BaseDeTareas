@@ -62,13 +62,36 @@ export async function ensureRuntimeSchema() {
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           UNIQUE (announcement_id, user_id)
         );
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          endpoint TEXT NOT NULL UNIQUE,
+          p256dh TEXT NOT NULL,
+          auth TEXT NOT NULL,
+          user_agent TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS push_notification_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          notification_type TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (user_id, entity_type, entity_id, notification_type)
+        );
         CREATE INDEX IF NOT EXISTS idx_announcements_group ON announcements(group_id, event_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_announcement_reminders_user ON announcement_reminders(user_id, status);
         CREATE INDEX IF NOT EXISTS idx_auth_codes_expiry ON auth_codes(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_push_notification_log_entity ON push_notification_log(entity_type, entity_id);
         INSERT OR IGNORE INTO schema_migrations (version, name)
         VALUES (3, 'announcements_and_profile_customization');
         INSERT OR IGNORE INTO schema_migrations (version, name)
         VALUES (4, 'email_verification_and_password_reset');
+        INSERT OR IGNORE INTO schema_migrations (version, name)
+        VALUES (5, 'web_push_notifications');
       `);
     })().catch(error => {
       schemaPromise = undefined;
