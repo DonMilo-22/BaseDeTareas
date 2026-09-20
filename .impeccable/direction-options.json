@@ -1,0 +1,74 @@
+{
+  "title": "Elige el mundo visual de Base de Tareas",
+  "question": "La dirección académica/editorial puede tomar dos formas completas. Conserva la asignada, elige la alternativa o pide otra ronda.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Registro académico vivo",
+      "kicker": "LA PROPUESTA",
+      "lineage": "libros de registro universitario, hojas de control y márgenes editoriales",
+      "thesis": "La semana se lee como un registro vivo donde cada materia deja una marca clara y cada entrega ocupa un lugar preciso.",
+      "palette": ["#f2efe6", "#17211c", "#a4472d", "#d8d0bd", "#496a5a"],
+      "materials": ["papel marfil", "reglas finas", "tinta oscura", "marcas de materia"],
+      "viewport": "Un índice lateral compacto y una hoja semanal abierta muestran primero lo próximo, con fechas alineadas y color solo en el margen de cada materia.",
+      "risk": "Puede sentirse demasiado institucional si la tipografía y los espacios no conservan calidez.",
+      "raised": [
+        {"from": "horario de transporte", "raise": "Las horas y vencimientos tendrán lectura inmediata y alineación rigurosa."},
+        {"from": "revista académica", "raise": "La jerarquía editorial distinguirá contexto, título y metadatos sin tarjetas repetidas."}
+      ],
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          {"label": "índice", "x": 0, "y": 0, "w": 2, "h": 10, "accent": true},
+          {"label": "semana", "x": 2, "y": 0, "w": 10, "h": 2},
+          {"label": "próximas entregas", "x": 2, "y": 2, "w": 7, "h": 5, "accent": true},
+          {"label": "progreso", "x": 9, "y": 2, "w": 3, "h": 5},
+          {"label": "actividad", "x": 2, "y": 7, "w": 10, "h": 3}
+        ]
+      }
+    },
+    {
+      "id": "model-pick",
+      "label": "Índice de revista académica",
+      "kicker": "ELECCIÓN DE IMPECCABLE",
+      "lineage": "revistas universitarias, sumarios y sistemas de publicación editorial",
+      "thesis": "Cada vista funciona como una edición: una idea principal, un índice breve y contenido ordenado por importancia.",
+      "palette": ["#f7f3e8", "#1d2528", "#8f3528", "#c9bda6", "#315b66"],
+      "materials": ["tipografía editorial", "folios", "columnas", "reglas de sección"],
+      "viewport": "La semana abre con una entrega dominante, seguida por un sumario compacto de pendientes, materias y progreso.",
+      "risk": "Es la opción más familiar dentro de la dirección editorial y puede perder personalidad si se convierte en una cuadrícula rígida.",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          {"label": "navegación", "x": 0, "y": 0, "w": 2, "h": 10},
+          {"label": "portada semanal", "x": 2, "y": 0, "w": 10, "h": 4, "accent": true},
+          {"label": "sumario", "x": 2, "y": 4, "w": 4, "h": 6},
+          {"label": "agenda", "x": 6, "y": 4, "w": 6, "h": 6}
+        ]
+      }
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": true},
+  "canon": true,
+  "canonCard": {
+    "label": "Dashboard académico convencional",
+    "thesis": "La estructura conocida de sidebar, tarjetas de resumen y paneles, ejecutada con mayor limpieza.",
+    "palette": ["#ffffff", "#172033", "#4f46e5", "#f1f3f8"],
+    "materials": ["cuadrícula de producto", "tarjetas", "iconos lineales"],
+    "viewport": "Sidebar, tres indicadores y paneles de tareas y actividad.",
+    "risk": "Sería clara, pero seguiría pareciéndose a otros productos de productividad.",
+    "wireframe": {
+      "cols": 12,
+      "rows": 10,
+      "regions": [
+        {"label": "sidebar", "x": 0, "y": 0, "w": 2, "h": 10},
+        {"label": "resumen", "x": 2, "y": 0, "w": 10, "h": 3},
+        {"label": "tarjetas", "x": 2, "y": 3, "w": 10, "h": 7}
+      ]
+    }
+  },
+  "steer": true
+}

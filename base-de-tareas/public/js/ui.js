@@ -8,6 +8,23 @@ export const roleLabel = role => ({ admin: 'Administrador', manager: 'Gestor', m
 
 export const isManager = group => ['admin', 'manager'].includes(group?.role);
 
+function contrastText(hexColor) {
+  const hex = String(hexColor || '#315a4a').replace('#', '');
+  const rgb = hex.length === 3 ? [...hex].map(value => parseInt(value + value, 16)) : [0, 2, 4].map(index => parseInt(hex.slice(index, index + 2), 16));
+  const luminance = rgb.map(value => {
+    const channel = value / 255;
+    return channel <= .03928 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+  }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+  return luminance > .42 ? '#17231e' : '#fffaf2';
+}
+
+const iconNames = new Set(['home', 'check', 'note', 'calendar', 'book', 'users', 'settings', 'search', 'plus', 'menu', 'close', 'chevron', 'arrow', 'left', 'right', 'more', 'restore']);
+
+export function icon(name, className = '') {
+  const safeName = iconNames.has(name) ? name : 'note';
+  return `<svg class="${esc(className)}" aria-hidden="true"><use href="#icon-${safeName}"></use></svg>`;
+}
+
 export function activitySentence(item) {
   const summary = String(item?.summary || '').trim();
   const name = String(item?.user_name || 'Sistema').trim();
@@ -53,8 +70,8 @@ export function toast(message, type = 'info', action) {
   const region = document.getElementById('toast-region');
   const item = document.createElement('div');
   item.className = `toast ${type}`;
-  const icon = type === 'error' ? '!' : type === 'success' ? '✓' : 'i';
-  item.innerHTML = `<strong>${icon}</strong><span>${esc(message)}</span><button aria-label="Cerrar">×</button>`;
+  const statusIcon = type === 'success' ? icon('check') : icon('note');
+  item.innerHTML = `<strong>${statusIcon}</strong><span>${esc(message)}</span><button aria-label="Cerrar">${icon('close')}</button>`;
   if (action) {
     const button = item.querySelector('button');
     button.textContent = action.label;
@@ -63,35 +80,37 @@ export function toast(message, type = 'info', action) {
     item.querySelector('button').addEventListener('click', () => item.remove());
   }
   region.append(item);
-  setTimeout(() => item.remove(), action ? 7000 : 4200);
+  setTimeout(() => item.remove(), action || type === 'error' ? 7000 : 4800);
 }
 
 export function taskRow(task) {
   const overdue = !Number(task.completed) && new Date(task.due_at) < new Date();
   return `
-    <article class="task-row ${Number(task.completed) ? 'is-complete' : ''}" data-task-id="${esc(task.id)}">
-      <button class="task-check ${Number(task.completed) ? 'checked' : ''}" data-action="toggle-task" data-task-id="${esc(task.id)}" data-completed="${Number(task.completed) ? '1' : '0'}" aria-label="${Number(task.completed) ? 'Marcar pendiente' : 'Marcar completada'}">${Number(task.completed) ? '✓' : ''}</button>
-      <div class="task-main">
-        <strong>${esc(task.title)}</strong>
-        <small><span class="dot" style="background:${esc(task.class_color || '#6366f1')}"></span>${esc(task.class_name)}${task.topic_name ? ` · ${esc(task.topic_name)}` : ''}</small>
-      </div>
-      <div class="task-meta">
-        ${Number(task.is_important) ? '<span class="pill important">Importante</span>' : ''}
-        <time class="${overdue ? 'overdue' : ''}">${esc(relativeDate(task.due_at))}</time>
-      </div>
+    <article class="task-row ${Number(task.completed) ? 'is-complete' : ''}">
+      <button class="task-check ${Number(task.completed) ? 'checked' : ''}" data-action="toggle-task" data-toggle-task-id="${esc(task.id)}" data-completed="${Number(task.completed) ? '1' : '0'}" aria-label="${Number(task.completed) ? 'Marcar pendiente' : 'Marcar completada'}">${Number(task.completed) ? icon('check') : ''}</button>
+      <button class="task-open" type="button" data-task-id="${esc(task.id)}" aria-label="Abrir tarea: ${esc(task.title)}">
+        <span class="task-main">
+          <strong>${esc(task.title)}</strong>
+          <small><span class="dot" style="background:${esc(task.class_color || '#315a4a')}"></span>${esc(task.class_name)}${task.topic_name ? ` · ${esc(task.topic_name)}` : ''}</small>
+        </span>
+        <span class="task-meta">
+          ${Number(task.is_important) ? '<span class="pill important">Importante</span>' : ''}
+          <time class="${overdue ? 'overdue' : ''}">${esc(relativeDate(task.due_at))}</time>
+        </span>
+      </button>
     </article>`;
 }
 
-export function emptyState(icon, title, description, action = '') {
-  return `<div class="empty-state"><span class="empty-icon">${icon}</span><h2>${esc(title)}</h2><p>${esc(description)}</p>${action}</div>`;
+export function emptyState(iconName, title, description, action = '') {
+  return `<div class="empty-state"><span class="empty-icon">${icon(iconName)}</span><h2>${esc(title)}</h2><p>${esc(description)}</p>${action}</div>`;
 }
 
-export function pageHead(eyebrow, title, subtitle, actions = '') {
-  return `<header class="page-head"><div><span class="eyebrow">${esc(eyebrow)}</span><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="page-actions">${actions}</div></header>`;
+export function pageHead(context, title, subtitle, actions = '') {
+  return `<header class="page-head"><div><div class="page-title-row"><h1>${esc(title)}</h1><span class="page-context">${esc(context)}</span></div><p>${esc(subtitle)}</p></div><div class="page-actions">${actions}</div></header>`;
 }
 
-export function avatar(name, size = '', imageUrl = '', color = '#4f46e5') {
-  const style = `--avatar-color:${esc(color || '#4f46e5')}`;
+export function avatar(name, size = '', imageUrl = '', color = '#315a4a') {
+  const style = `--avatar-color:${esc(color || '#315a4a')};--avatar-text:${contrastText(color)}`;
   return imageUrl
     ? `<img class="avatar ${size}" src="${esc(imageUrl)}" alt="Foto de ${esc(name)}" style="${style}">`
     : `<span class="avatar ${size}" style="${style}">${esc(initials(name))}</span>`;
@@ -119,7 +138,7 @@ export function calendarCells(monthDate, tasks, announcements = []) {
     });
     cells.push(`<div class="calendar-day ${day.getMonth() !== month ? 'outside' : ''} ${day.toDateString() === todayKey ? 'today' : ''}">
       <span class="day-number">${day.getDate()}</span>
-      ${dayTasks.slice(0, 3).map(task => `<button class="calendar-task" data-task-id="${esc(task.id)}" style="border-color:${esc(task.class_color || '#6366f1')}">${esc(task.title)}</button>`).join('')}
+      ${dayTasks.slice(0, 3).map(task => `<button class="calendar-task" data-task-id="${esc(task.id)}" style="--event-color:${esc(task.class_color || '#315a4a')}">${esc(task.title)}</button>`).join('')}
       ${dayAnnouncements.slice(0, Math.max(0, 3 - dayTasks.length)).map(item => `<button class="calendar-task announcement-event" data-announcement-id="${esc(item.id)}">Aviso · ${esc(item.body)}</button>`).join('')}
       ${dayTasks.length + dayAnnouncements.length > 3 ? `<small class="muted">+${dayTasks.length + dayAnnouncements.length - 3} más</small>` : ''}
     </div>`);
