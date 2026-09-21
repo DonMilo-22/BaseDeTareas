@@ -912,7 +912,8 @@ async function savePersonalReminder(event) {
     state.reminders = refreshed.reminders;
     state.reminderCapabilities = refreshed.capabilities;
     view.innerHTML = remindersView(state);
-    toast(id ? 'Recordatorio actualizado.' : 'Recordatorio programado.', data.warnings?.length ? 'info' : 'success');
+    if (data.warnings?.length) toast(data.warnings.join(' '), 'error');
+    else toast(id ? 'Recordatorio actualizado.' : 'Recordatorio programado.', 'success');
   } catch (error) { handleError(error); }
   finally { setBusy(form, false); }
 }

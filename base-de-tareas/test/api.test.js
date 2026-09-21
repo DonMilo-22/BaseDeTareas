@@ -52,7 +52,7 @@ beforeAll(async () => {
 describe('Base de Tareas v2 API', () => {
   it('reports a healthy database', async () => {
     const response = await request(app).get('/api/health').expect(200);
-    expect(response.body).toMatchObject({ ok: true, version: '2.6.0' });
+    expect(response.body).toMatchObject({ ok: true, version: '2.6.1' });
   });
 
   it('verifies email before registering users and never accepts a requested role', async () => {

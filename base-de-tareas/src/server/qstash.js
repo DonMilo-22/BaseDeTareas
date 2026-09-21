@@ -6,6 +6,28 @@ import { AppError } from './errors.js';
 let client;
 let receiver;
 
+export function qstashErrorMessage(error) {
+  const status = Number(error?.status || error?.statusCode || 0);
+  const providerMessage = String(error?.message || error || '').trim();
+  if (status === 401 || status === 403) {
+    return 'QStash rechazó la autorización. Revisa que QSTASH_TOKEN pertenezca al mismo proyecto de QStash y vuelve a desplegar.';
+  }
+  if (status === 429) {
+    return 'QStash alcanzó temporalmente el límite de solicitudes. Intenta nuevamente en unos minutos.';
+  }
+  if (status === 400 && /delay|not.?before|future|seven|7 day/i.test(providerMessage)) {
+    return 'QStash rechazó la fecha programada porque está fuera del intervalo permitido por el plan.';
+  }
+  if (status === 400 && /url|destination/i.test(providerMessage)) {
+    return 'QStash rechazó la URL de entrega. APP_URL debe ser la dirección HTTPS pública de producción.';
+  }
+  if (/fetch failed|network|timeout|timed out/i.test(providerMessage)) {
+    return 'No se pudo conectar con QStash. Intenta nuevamente en unos minutos.';
+  }
+  const safeDetail = providerMessage.replace(/Bearer\s+\S+/gi, 'Bearer [oculto]').slice(0, 240);
+  return safeDetail ? `QStash no aceptó el recordatorio: ${safeDetail}` : 'QStash no aceptó el recordatorio por una causa desconocida.';
+}
+
 export function qstashConfigured() {
   return Boolean(config.qstashToken && config.qstashCurrentSigningKey && config.qstashNextSigningKey && config.appUrl.startsWith('https://'))
     || process.env.NODE_ENV === 'test';
@@ -28,14 +50,19 @@ function qstashReceiver() {
 
 export async function schedulePushDelivery({ reminderId, scheduleVersion, remindAt }) {
   if (process.env.NODE_ENV === 'test') return `test-qstash-${randomUUID()}`;
-  const result = await qstashClient().publishJSON({
-    url: `${config.appUrl}/api/reminder-deliveries/${encodeURIComponent(reminderId)}`,
-    body: { schedule_version: scheduleVersion },
-    notBefore: Math.floor(new Date(remindAt).getTime() / 1000),
-    deduplicationId: `personal-reminder-${reminderId}-${scheduleVersion}`,
-    retries: 3,
-  });
-  return result.messageId;
+  try {
+    const result = await qstashClient().publishJSON({
+      url: `${config.appUrl}/api/reminder-deliveries/${encodeURIComponent(reminderId)}`,
+      body: { schedule_version: scheduleVersion },
+      notBefore: Math.floor(new Date(remindAt).getTime() / 1000),
+      deduplicationId: `personal-reminder-${reminderId}-${scheduleVersion}`,
+      retries: 3,
+    });
+    if (!result?.messageId) throw new Error('QStash no devolvió un identificador de mensaje.');
+    return result.messageId;
+  } catch (error) {
+    throw new AppError(502, qstashErrorMessage(error), 'QSTASH_SCHEDULE_FAILED');
+  }
 }
 
 export async function cancelPushDelivery(messageId) {
