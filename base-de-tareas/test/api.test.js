@@ -24,6 +24,7 @@ let subtaskId;
 let topicId;
 let commentId;
 let reminderId;
+let personalReminderId;
 
 async function registerVerified(agent, account) {
   const started = await agent.post('/api/auth/register').send(account).expect(202);
@@ -51,7 +52,7 @@ beforeAll(async () => {
 describe('Base de Tareas v2 API', () => {
   it('reports a healthy database', async () => {
     const response = await request(app).get('/api/health').expect(200);
-    expect(response.body).toMatchObject({ ok: true, version: '2.5.0' });
+    expect(response.body).toMatchObject({ ok: true, version: '2.6.0' });
   });
 
   it('verifies email before registering users and never accepts a requested role', async () => {
@@ -242,6 +243,72 @@ describe('Base de Tareas v2 API', () => {
     const memberTasks = await member.get(`/api/groups/${groupId}/tasks?status=pending`).expect(200);
     expect(adminTasks.body.tasks).toHaveLength(1);
     expect(memberTasks.body.tasks).toHaveLength(1);
+  });
+
+  it('creates, edits, delivers and deletes personal reminders through email and push', async () => {
+    const remindAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const created = await admin.post(`/api/groups/${groupId}/personal-reminders`).send({
+      message: 'Terminar el reporte antes de cenar.',
+      remind_at: remindAt,
+      email_enabled: true,
+      push_enabled: true,
+      task_id: taskId,
+      announcement_id: null,
+    }).expect(201);
+    personalReminderId = created.body.reminder.id;
+    expect(created.body.reminder).toMatchObject({
+      message: 'Terminar el reporte antes de cenar.',
+      task_id: taskId,
+      email_status: 'scheduled',
+      push_status: 'scheduled',
+    });
+
+    const queue = await admin.get(`/api/groups/${groupId}/personal-reminders`).expect(200);
+    expect(queue.body.capabilities).toMatchObject({ email: true, push: true, push_devices: 1 });
+    expect(queue.body.reminders[0].target.type).toBe('task');
+
+    const row = await db.execute({ sql: 'SELECT schedule_version FROM personal_reminders WHERE id = ?', args: [personalReminderId] });
+    await request(app).post(`/api/reminder-deliveries/${personalReminderId}`)
+      .set('Upstash-Signature', 'test-qstash-signature')
+      .send({ schedule_version: Number(row.rows[0].schedule_version) })
+      .expect(200);
+    const delivered = await db.execute({ sql: 'SELECT push_status FROM personal_reminders WHERE id = ?', args: [personalReminderId] });
+    expect(delivered.rows[0].push_status).toBe('sent');
+    await request(app).post(`/api/reminder-deliveries/${personalReminderId}`)
+      .set('Upstash-Signature', 'firma-incorrecta')
+      .send({ schedule_version: Number(row.rows[0].schedule_version) })
+      .expect(401);
+
+    const updated = await admin.patch(`/api/groups/${groupId}/personal-reminders/${personalReminderId}`).send({
+      message: 'Comprar cartulina a las seis.',
+      remind_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      email_enabled: true,
+      push_enabled: false,
+      task_id: null,
+      announcement_id: null,
+    }).expect(200);
+    expect(updated.body.reminder).toMatchObject({ message: 'Comprar cartulina a las seis.', task_id: null, email_status: 'scheduled', push_status: 'disabled' });
+    await member.delete(`/api/groups/${groupId}/personal-reminders/${personalReminderId}`).expect(404);
+    await admin.delete(`/api/groups/${groupId}/personal-reminders/${personalReminderId}`).expect(204);
+    const empty = await db.execute({ sql: 'SELECT id FROM personal_reminders WHERE id = ?', args: [personalReminderId] });
+    expect(empty.rows).toHaveLength(0);
+
+    const distant = await admin.post(`/api/groups/${groupId}/personal-reminders`).send({
+      message: 'Aviso push lejano.',
+      remind_at: new Date(Date.now() + 10 * 86400000).toISOString(),
+      email_enabled: false,
+      push_enabled: true,
+      task_id: null,
+      announcement_id: null,
+    }).expect(201);
+    expect(distant.body.reminder.push_status).toBe('pending');
+    await db.execute({
+      sql: 'UPDATE personal_reminders SET remind_at = ? WHERE id = ?',
+      args: [new Date(Date.now() + 3 * 86400000).toISOString(), distant.body.reminder.id],
+    });
+    const cron = await request(app).get('/api/cron/reminders').set('Authorization', 'Bearer test-cron-secret').expect(200);
+    expect(cron.body.reminder_center).toMatchObject({ queued: 1, scheduled: 1, failed: 0 });
+    await admin.delete(`/api/groups/${groupId}/personal-reminders/${distant.body.reminder.id}`).expect(204);
   });
 
   it('supports comments and scheduled reminder emails through the test adapter', async () => {

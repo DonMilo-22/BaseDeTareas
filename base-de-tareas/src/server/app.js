@@ -12,6 +12,7 @@ import extraRoutes from './routes/extras.js';
 import cronRoutes from './routes/cron.js';
 import announcementRoutes from './routes/announcements.js';
 import pushRoutes from './routes/push.js';
+import personalReminderRoutes, { deliveryRouter as reminderDeliveryRoutes } from './routes/personal-reminders.js';
 import { checkDatabase, ensureRuntimeSchema } from './db.js';
 import { asyncRoute, errorHandler, notFoundHandler, requireSameOrigin } from './middleware.js';
 
@@ -35,7 +36,10 @@ app.use(helmet({
   },
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, _res, buffer) => { req.rawBody = buffer.toString('utf8'); },
+}));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 app.use(requireSameOrigin);
 app.use(asyncRoute(async (_req, _res, next) => {
@@ -45,13 +49,14 @@ app.use(asyncRoute(async (_req, _res, next) => {
 
 app.get('/api/health', async (_req, res, next) => {
   try {
-    res.json({ ok: await checkDatabase(), version: '2.5.0' });
+    res.json({ ok: await checkDatabase(), version: '2.6.0' });
   } catch (error) {
     next(error);
   }
 });
 
 app.use('/api/cron', cronRoutes);
+app.use('/api/reminder-deliveries', reminderDeliveryRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/groups', groupRoutes);
@@ -60,6 +65,7 @@ app.use('/api/groups/:groupId/tasks', taskRoutes);
 app.use('/api/groups/:groupId/tasks', collaborationRoutes);
 app.use('/api/groups/:groupId/tasks', reminderRoutes);
 app.use('/api/groups/:groupId/announcements', announcementRoutes);
+app.use('/api/groups/:groupId/personal-reminders', personalReminderRoutes);
 app.use('/api/groups/:groupId', extraRoutes);
 
 app.use('/api', notFoundHandler);

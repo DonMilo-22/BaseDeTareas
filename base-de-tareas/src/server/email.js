@@ -184,6 +184,33 @@ export async function scheduleAnnouncementReminderEmail({ reminderId, to, userNa
   });
 }
 
+export async function schedulePersonalReminderEmail({ reminderId, scheduleVersion, to, userName, message, remindAt, target }) {
+  const [recipient] = resolveEmailRecipients([{ id: 'personal', name: userName, email: to }]);
+  if (!recipient) throw new AppError(400, 'El correo no es válido para recibir recordatorios.', 'INVALID_EMAIL');
+  const targetUrl = `${config.appUrl}${target.url}`;
+  const targetBlock = target.type === 'personal' ? '' : `<div style="margin:20px 0;padding:16px;border:1px solid #e4e7ec;border-radius:14px">
+    <strong>${escapeHtml(target.title)}</strong>
+    ${target.detail ? `<p style="margin-bottom:0;color:#667085">${escapeHtml(target.detail)}</p>` : ''}
+  </div>`;
+  return sendEmail({
+    to: recipient.email,
+    subject: `Recordatorio: ${String(message).slice(0, 80)}`,
+    scheduledAt: remindAt,
+    idempotencyKey: `personal-reminder-${reminderId}-${scheduleVersion}`,
+    text: `Hola ${userName}. ${message}${target.detail ? ` ${target.title}: ${target.detail}.` : ''} ${targetUrl}`,
+    html: `<div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:auto;color:#172033">
+      <p style="color:#667085">Base de Tareas</p>
+      <h1 style="font-size:24px">Tu recordatorio</h1>
+      <p>Hola, ${escapeHtml(userName)}.</p>
+      <div style="margin:24px 0;padding:20px;border-radius:14px;background:#f7f8fc">
+        <p style="margin:0;font-size:18px;font-weight:600;white-space:pre-wrap">${escapeHtml(message)}</p>
+      </div>
+      ${targetBlock}
+      <p><a href="${targetUrl}" style="display:inline-block;padding:12px 18px;background:#4f46e5;color:white;text-decoration:none;border-radius:10px">Abrir Base de Tareas</a></p>
+    </div>`,
+  });
+}
+
 export async function cancelReminderEmail(providerEmailId) {
   if (!providerEmailId || process.env.NODE_ENV === 'test' || !config.resendApiKey) return true;
   try {

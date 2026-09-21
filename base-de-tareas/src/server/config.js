@@ -24,4 +24,7 @@ export const config = Object.freeze({
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || '',
   vapidSubject: process.env.VAPID_SUBJECT || (appUrl.startsWith('https://') ? appUrl : 'mailto:local@base-de-tareas.test'),
+  qstashToken: process.env.QSTASH_TOKEN || '',
+  qstashCurrentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY || '',
+  qstashNextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY || '',
 });

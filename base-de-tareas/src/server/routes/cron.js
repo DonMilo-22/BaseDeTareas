@@ -10,6 +10,7 @@ import {
 import { AppError } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
 import { sendPushToUsers } from '../push.js';
+import { schedulePendingPersonalReminders } from '../personal-reminders.js';
 
 const router = Router();
 const scheduleWindowMs = 29 * 24 * 60 * 60 * 1000;
@@ -23,6 +24,7 @@ function requireCron(req, _res, next) {
 
 router.get('/reminders', requireCron, asyncRoute(async (_req, res) => {
   const now = new Date();
+  const personalCenter = await schedulePendingPersonalReminders(now);
   const horizon = new Date(now.getTime() + scheduleWindowMs).toISOString();
   const expired = await getDb().execute({
     sql: `UPDATE reminders SET status = 'failed', last_error = 'La fecha del recordatorio ya pasó.',
@@ -249,6 +251,7 @@ router.get('/reminders', requireCron, asyncRoute(async (_req, res) => {
       skipped: pushSkipped,
       failed: pushFailed,
     },
+    reminder_center: personalCenter,
   });
 }));
 

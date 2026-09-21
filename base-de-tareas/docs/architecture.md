@@ -8,6 +8,7 @@
 - Interfaz centrada en lo que el estudiante necesita hacer hoy.
 - Recordatorios de correo idempotentes y seguros.
 - Suscripciones Web Push independientes por usuario y dispositivo.
+- Recordatorios personales multicanal con programación firmada e idempotente.
 - Migraciones reproducibles; nunca se altera el esquema durante una petición normal.
 
 ## Roles
@@ -67,6 +68,16 @@ adaptador de correo falso. La clave idempotente evita duplicados si el cron rein
 - El cron diario envía una sola notificación por usuario para cada tarea pendiente que vence dentro de 24 horas; `push_notification_log` evita duplicados.
 - Los endpoints expirados se eliminan cuando el proveedor responde con `404` o `410`.
 - Una falla del proveedor push no revierte la creación de una tarea o anuncio ni afecta los correos de Resend.
+
+## Centro de recordatorios
+
+- `personal_reminders` conserva el texto, la fecha, los canales y el vínculo opcional con una tarea o anuncio.
+- Resend programa el correo hasta 29 días antes de su entrega.
+- QStash programa el push hasta siete días antes en su plan gratuito.
+- El cron diario mueve los recordatorios lejanos a cada proveedor cuando entran en su ventana, sin modificar la hora elegida.
+- Editar incrementa `schedule_version`, cancela las entregas anteriores y crea otras con una nueva clave de idempotencia.
+- El receptor público valida `Upstash-Signature`; una reserva única en `push_notification_log` evita duplicados por los reintentos de QStash.
+- Eliminar cancela tanto el correo de Resend como el mensaje pendiente de QStash antes de borrar el registro.
 
 ## Decisiones de datos
 

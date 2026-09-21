@@ -81,17 +81,43 @@ export async function ensureRuntimeSchema() {
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           UNIQUE (user_id, entity_type, entity_id, notification_type)
         );
+        CREATE TABLE IF NOT EXISTS personal_reminders (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+          task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+          announcement_id TEXT REFERENCES announcements(id) ON DELETE SET NULL,
+          message TEXT NOT NULL CHECK (length(message) BETWEEN 1 AND 500),
+          remind_at TEXT NOT NULL,
+          email_enabled INTEGER NOT NULL DEFAULT 0 CHECK (email_enabled IN (0, 1)),
+          push_enabled INTEGER NOT NULL DEFAULT 0 CHECK (push_enabled IN (0, 1)),
+          email_status TEXT NOT NULL DEFAULT 'disabled' CHECK (email_status IN ('disabled', 'pending', 'scheduled', 'sent', 'failed', 'cancelled')),
+          push_status TEXT NOT NULL DEFAULT 'disabled' CHECK (push_status IN ('disabled', 'pending', 'scheduled', 'sent', 'failed', 'cancelled')),
+          provider_email_id TEXT,
+          qstash_message_id TEXT,
+          schedule_version INTEGER NOT NULL DEFAULT 1,
+          last_error TEXT,
+          delivered_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CHECK (email_enabled = 1 OR push_enabled = 1),
+          CHECK (task_id IS NULL OR announcement_id IS NULL)
+        );
         CREATE INDEX IF NOT EXISTS idx_announcements_group ON announcements(group_id, event_at, created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_announcement_reminders_user ON announcement_reminders(user_id, status);
         CREATE INDEX IF NOT EXISTS idx_auth_codes_expiry ON auth_codes(expires_at);
         CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);
         CREATE INDEX IF NOT EXISTS idx_push_notification_log_entity ON push_notification_log(entity_type, entity_id);
+        CREATE INDEX IF NOT EXISTS idx_personal_reminders_queue ON personal_reminders(user_id, group_id, remind_at);
+        CREATE INDEX IF NOT EXISTS idx_personal_reminders_pending ON personal_reminders(email_status, push_status, remind_at);
         INSERT OR IGNORE INTO schema_migrations (version, name)
         VALUES (3, 'announcements_and_profile_customization');
         INSERT OR IGNORE INTO schema_migrations (version, name)
         VALUES (4, 'email_verification_and_password_reset');
         INSERT OR IGNORE INTO schema_migrations (version, name)
         VALUES (5, 'web_push_notifications');
+        INSERT OR IGNORE INTO schema_migrations (version, name)
+        VALUES (6, 'personal_reminder_center');
       `);
     })().catch(error => {
       schemaPromise = undefined;

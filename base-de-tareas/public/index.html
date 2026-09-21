@@ -120,6 +120,7 @@
         <a href="#tasks" data-view="tasks" class="nav-item"><span class="nav-icon">✓</span><span>Tareas</span><b id="pending-badge" class="nav-badge">0</b></a>
         <a href="#announcements" data-view="announcements" class="nav-item"><span class="nav-icon">◇</span><span>Anuncios</span></a>
         <a href="#calendar" data-view="calendar" class="nav-item"><span class="nav-icon">□</span><span>Calendario</span></a>
+        <a href="#reminders" data-view="reminders" class="nav-item"><span class="nav-icon">◷</span><span>Recordatorios</span></a>
         <a href="#classes" data-view="classes" class="nav-item"><span class="nav-icon">▤</span><span>Materias</span></a>
         <div class="nav-separator"></div>
         <a href="#team" data-view="team" class="nav-item"><span class="nav-icon">◎</span><span>Equipo</span></a>
@@ -157,6 +158,7 @@
       <a href="#tasks" data-view="tasks"><span>✓</span><small>Tareas</small></a>
       <a href="#announcements" data-view="announcements"><span>◇</span><small>Avisos</small></a>
       <a href="#calendar" data-view="calendar"><span>□</span><small>Agenda</small></a>
+      <a href="#reminders" data-view="reminders"><span>◷</span><small>Recordar</small></a>
       <a href="#settings" data-view="settings"><span>⚙</span><small>Ajustes</small></a>
     </nav>
   </div>
@@ -235,6 +237,30 @@
       <input type="hidden" name="announcement_id">
       <div class="modal-body"><label>Fecha y hora<input name="remind_at" type="datetime-local" required></label></div>
       <div class="modal-footer"><button type="button" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary">Programar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="personal-reminder-dialog" class="modal">
+    <form method="dialog" class="modal-card" id="personal-reminder-form">
+      <div class="modal-header"><div><span class="eyebrow">Aviso personal</span><h2 id="personal-reminder-form-title">Nuevo recordatorio</h2></div><button type="button" class="icon-button dialog-close" aria-label="Cerrar">×</button></div>
+      <input type="hidden" name="id">
+      <div class="modal-body stack-md">
+        <label>¿Qué quieres recordar?<textarea name="message" rows="3" maxlength="500" required placeholder="Ej. Hacer tarea a las 6:00 p. m."></textarea></label>
+        <label>Fecha y hora<input name="remind_at" type="datetime-local" required></label>
+        <div class="form-grid reminder-reference-fields">
+          <label>Vincular con <span class="optional">Opcional</span><select name="reference_type"><option value="">Nada, solo el mensaje</option><option value="task">Una tarea</option><option value="announcement">Un anuncio o evento</option></select></label>
+          <label id="personal-reminder-reference" hidden>Selecciona uno<select name="reference_id"></select></label>
+        </div>
+        <fieldset class="channel-fieldset">
+          <legend>¿Dónde quieres recibirlo?</legend>
+          <div class="channel-options">
+            <label class="check-label"><input name="email_enabled" type="checkbox"><span><strong>Correo electrónico</strong><small>Se enviará a tu correo de la cuenta.</small></span></label>
+            <label class="check-label"><input name="push_enabled" type="checkbox"><span><strong>Notificación push</strong><small>La recibirás en tus dispositivos activados.</small></span></label>
+          </div>
+          <p id="personal-reminder-channel-help" class="fine-print"></p>
+        </fieldset>
+      </div>
+      <div class="modal-footer"><button type="button" class="button secondary dialog-close">Cancelar</button><button type="submit" class="button primary">Guardar recordatorio</button></div>
     </form>
   </dialog>
 
