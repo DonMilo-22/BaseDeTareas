@@ -53,7 +53,7 @@ export async function schedulePushDelivery({ reminderId, scheduleVersion, remind
   try {
     const result = await qstashClient().publishJSON({
       url: `${config.appUrl}/api/reminder-deliveries/${encodeURIComponent(reminderId)}`,
-      body: { schedule_version: scheduleVersion },
+      body: { reminder_id: reminderId, schedule_version: scheduleVersion },
       notBefore: Math.floor(new Date(remindAt).getTime() / 1000),
       deduplicationId: `personal-reminder-${reminderId}-${scheduleVersion}`,
       retries: 3,
@@ -76,11 +76,13 @@ export async function cancelPushDelivery(messageId) {
   }
 }
 
-export async function verifyQstashRequest({ signature, body, url }) {
+export async function verifyQstashRequest({ signature, body }) {
   if (process.env.NODE_ENV === 'test') return signature === 'test-qstash-signature';
   if (!signature) return false;
   try {
-    return await qstashReceiver().verify({ signature, body, url, clockTolerance: 5 });
+    // Vercel puede reescribir el host o la ruta antes de entregar la petición.
+    // La firma sigue validando el cuerpo exacto, que incluye el id del recordatorio.
+    return await qstashReceiver().verify({ signature, body, clockTolerance: 5 });
   } catch {
     return false;
   }

@@ -52,7 +52,7 @@ beforeAll(async () => {
 describe('Base de Tareas v2 API', () => {
   it('reports a healthy database', async () => {
     const response = await request(app).get('/api/health').expect(200);
-    expect(response.body).toMatchObject({ ok: true, version: '2.6.1' });
+    expect(response.body).toMatchObject({ ok: true, version: '2.6.2' });
   });
 
   it('verifies email before registering users and never accepts a requested role', async () => {
@@ -270,13 +270,18 @@ describe('Base de Tareas v2 API', () => {
     const row = await db.execute({ sql: 'SELECT schedule_version FROM personal_reminders WHERE id = ?', args: [personalReminderId] });
     await request(app).post(`/api/reminder-deliveries/${personalReminderId}`)
       .set('Upstash-Signature', 'test-qstash-signature')
-      .send({ schedule_version: Number(row.rows[0].schedule_version) })
+      .send({ reminder_id: personalReminderId, schedule_version: Number(row.rows[0].schedule_version) })
       .expect(200);
     const delivered = await db.execute({ sql: 'SELECT push_status FROM personal_reminders WHERE id = ?', args: [personalReminderId] });
     expect(delivered.rows[0].push_status).toBe('sent');
     await request(app).post(`/api/reminder-deliveries/${personalReminderId}`)
       .set('Upstash-Signature', 'firma-incorrecta')
-      .send({ schedule_version: Number(row.rows[0].schedule_version) })
+      .send({ reminder_id: personalReminderId, schedule_version: Number(row.rows[0].schedule_version) })
+      .expect(401);
+
+    await request(app).post(`/api/reminder-deliveries/${personalReminderId}`)
+      .set('Upstash-Signature', 'test-qstash-signature')
+      .send({ reminder_id: taskId, schedule_version: Number(row.rows[0].schedule_version) })
       .expect(401);
 
     const updated = await admin.patch(`/api/groups/${groupId}/personal-reminders/${personalReminderId}`).send({

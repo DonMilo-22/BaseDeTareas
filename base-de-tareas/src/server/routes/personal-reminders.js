@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { requireUser } from '../auth.js';
-import { config } from '../config.js';
 import { getDb } from '../db.js';
 import { AppError, notFound } from '../errors.js';
 import { asyncRoute } from '../middleware.js';
@@ -206,11 +205,17 @@ deliveryRouter.post('/:reminderId', asyncRoute(async (req, res) => {
   const reminderId = parse(idSchema, req.params.reminderId);
   const rawBody = req.rawBody || JSON.stringify(req.body || {});
   const signature = String(req.headers['upstash-signature'] || '');
-  const url = `${config.appUrl}${req.originalUrl}`;
-  if (!await verifyQstashRequest({ signature, body: rawBody, url })) {
+  if (!await verifyQstashRequest({ signature, body: rawBody })) {
     throw new AppError(401, 'Firma de QStash no válida.', 'INVALID_QSTASH_SIGNATURE');
   }
-  const { schedule_version: scheduleVersion } = parse(z.object({ schedule_version: z.number().int().positive() }), req.body);
+  const delivery = parse(z.object({
+    reminder_id: idSchema,
+    schedule_version: z.number().int().positive(),
+  }), req.body);
+  if (delivery.reminder_id !== reminderId) {
+    throw new AppError(401, 'El recordatorio firmado no coincide con la ruta de entrega.', 'INVALID_QSTASH_REMINDER');
+  }
+  const scheduleVersion = delivery.schedule_version;
   const reminder = await getPersonalReminder(reminderId);
   if (!reminder || !Number(reminder.push_enabled) || Number(reminder.schedule_version) !== scheduleVersion
       || !['scheduled', 'pending'].includes(reminder.push_status)) {

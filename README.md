@@ -2,7 +2,7 @@
 
 Aplicación web colaborativa para organizar materias, tareas, anuncios y recordatorios escolares dentro de grupos privados.
 
-**Versión actual:** 2.6.1
+**Versión actual:** 2.6.2
 
 **Aplicación:** [basedetareas.vercel.app](https://basedetareas.vercel.app)
 
@@ -164,6 +164,7 @@ TURSO_AUTH_TOKEN=
 | `VAPID_PUBLIC_KEY` | Para push | Clave pública utilizada por el navegador para crear la suscripción. |
 | `VAPID_PRIVATE_KEY` | Para push | Clave privada del servidor; nunca debe incluirse en el código del cliente. |
 | `VAPID_SUBJECT` | Para push | URL HTTPS o contacto `mailto:` que identifica al emisor. |
+| `QSTASH_URL` | Para push programado | Endpoint regional; usa `https://qstash-us-east-1.upstash.io` para credenciales US. |
 | `QSTASH_TOKEN` | Para push programado | Autoriza la creación y cancelación de entregas en QStash. |
 | `QSTASH_CURRENT_SIGNING_KEY` | Para push programado | Verifica que la llamada de entrega proviene de QStash. |
 | `QSTASH_NEXT_SIGNING_KEY` | Para push programado | Permite rotar la firma sin interrumpir entregas. |
@@ -228,7 +229,7 @@ Las claves VAPID no sustituyen a Resend. Web Push se utiliza para tareas nuevas,
 
 1. Crea una cuenta en Upstash y abre **QStash**.
 2. Copia el token y las dos claves de firma de la consola.
-3. Guarda los valores en `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` y `QSTASH_NEXT_SIGNING_KEY`.
+3. Guarda los valores en `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` y `QSTASH_NEXT_SIGNING_KEY`. Si elegiste US, configura también `QSTASH_URL=https://qstash-us-east-1.upstash.io`.
 4. Comprueba que `APP_URL` apunte a la URL HTTPS pública de producción.
 
 El plan gratuito de QStash permite retrasar una entrega hasta siete días. Los recordatorios más lejanos permanecen en Turso y el cron diario los programa automáticamente al entrar en esa ventana. QStash conserva la hora exacta y firma cada llamada; la API verifica esa firma antes de enviar el push.
@@ -261,7 +262,7 @@ npm run smoke        # comprobación de un despliegue
 npm audit --omit=dev
 ```
 
-La versión 2.6.1 cuenta con pruebas para registro verificado, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, suscripciones push, recordatorios personales por correo y push, diagnóstico seguro de errores de QStash, programación diferida, edición, cancelación, anuncios, papelera, exportaciones e interfaz móvil.
+La versión 2.6.2 cuenta con pruebas para registro verificado, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, suscripciones push, recordatorios personales por correo y push, firmas de QStash resistentes a rewrites de Vercel, diagnóstico seguro, programación diferida, edición, cancelación, anuncios, papelera, exportaciones e interfaz móvil.
 
 ## Seguridad
 
