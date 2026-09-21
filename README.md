@@ -2,7 +2,7 @@
 
 Aplicación web colaborativa para organizar materias, tareas, anuncios y recordatorios escolares dentro de grupos privados.
 
-**Versión actual:** 2.6.0
+**Versión actual:** 2.6.1
 
 **Aplicación:** [basedetareas.vercel.app](https://basedetareas.vercel.app)
 
@@ -261,7 +261,7 @@ npm run smoke        # comprobación de un despliegue
 npm audit --omit=dev
 ```
 
-La versión 2.6.0 cuenta con pruebas para registro verificado, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, suscripciones push, recordatorios personales por correo y push, programación diferida con QStash, edición, cancelación, anuncios, papelera, exportaciones e interfaz móvil.
+La versión 2.6.1 cuenta con pruebas para registro verificado, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, suscripciones push, recordatorios personales por correo y push, diagnóstico seguro de errores de QStash, programación diferida, edición, cancelación, anuncios, papelera, exportaciones e interfaz móvil.
 
 ## Seguridad
 

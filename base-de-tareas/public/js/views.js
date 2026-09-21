@@ -109,7 +109,7 @@ function reminderRow(item) {
       <div class="reminder-time"><time datetime="${esc(item.remind_at)}">${esc(dateTime(item.remind_at, { weekday: 'long' }))}</time>${reminderChannels(item)}</div>
       <h2>${esc(item.message)}</h2>
       <button type="button" class="reminder-target" data-action="open-reminder-target" ${item.target.type === 'personal' ? 'disabled' : ''}>${esc(targetLabel)}${item.target.detail ? ` · ${esc(item.target.detail)}` : ''}</button>
-      ${item.status === 'attention' ? `<p class="reminder-error">No se pudo programar uno de los medios. Edita el recordatorio para volver a intentarlo.</p>` : ''}
+      ${item.status === 'attention' ? `<p class="reminder-error">${esc(item.last_error || 'No se pudo programar uno de los medios. Edita el recordatorio para volver a intentarlo.')}</p>` : ''}
     </div>
     <div class="reminder-actions"><button class="button secondary small" data-action="edit-personal-reminder">Editar</button><button class="button ghost small" data-action="delete-personal-reminder">Eliminar</button></div>
   </article>`;

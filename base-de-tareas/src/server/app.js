@@ -49,7 +49,7 @@ app.use(asyncRoute(async (_req, _res, next) => {
 
 app.get('/api/health', async (_req, res, next) => {
   try {
-    res.json({ ok: await checkDatabase(), version: '2.6.0' });
+    res.json({ ok: await checkDatabase(), version: '2.6.1' });
   } catch (error) {
     next(error);
   }
