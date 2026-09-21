@@ -2,11 +2,11 @@
 
 Aplicación web colaborativa para organizar materias, tareas, anuncios y recordatorios escolares dentro de grupos privados.
 
-**Versión actual:** 2.5.0
+**Versión actual:** 2.6.0
 
 **Aplicación:** [basedetareas.vercel.app](https://basedetareas.vercel.app)
 
-Base de Tareas utiliza una SPA ligera en el navegador, una API con Express desplegada en Vercel, Turso como base de datos y Resend para los correos. La misma aplicación puede ejecutarse localmente sin cambiar su arquitectura.
+Base de Tareas utiliza una SPA ligera en el navegador, una API con Express desplegada en Vercel, Turso como base de datos, Resend para los correos y QStash para programar notificaciones push personales. La misma aplicación puede ejecutarse localmente sin cambiar su arquitectura.
 
 ## Funciones principales
 
@@ -64,6 +64,11 @@ Nadie puede seleccionar un rol privilegiado durante el registro. La persona que 
 - Cola automática para recordatorios que todavía están fuera de la ventana de programación de Resend.
 - Notificaciones push opcionales para tareas nuevas, anuncios y entregas próximas.
 - Compatibilidad con la PWA instalada en iPhone, iPad y Android.
+- Centro personal de recordatorios con texto libre y cola cronológica.
+- Vínculo opcional con una tarea, anuncio o evento del grupo.
+- Elección independiente entre correo, push o ambos medios.
+- Edición y eliminación con cancelación de los envíos programados anteriores.
+- Entrega push a la hora elegida mediante mensajes firmados de QStash.
 
 ### Experiencia y personalización
 
@@ -88,6 +93,7 @@ Nadie puede seleccionar un rol privilegiado durante el registro. La persona que 
 | Validación | Zod |
 | Autenticación | bcrypt, JWT y cookies seguras |
 | Correos | Resend |
+| Programación push | Upstash QStash |
 | Hosting | Vercel Functions |
 | Pruebas | Vitest, Supertest, Happy DOM y Playwright |
 
@@ -115,6 +121,7 @@ BaseDeTareas/
 - Una base de datos Turso o un archivo LibSQL local.
 - Una clave JWT de al menos 32 caracteres.
 - Una cuenta de Resend con dominio verificado para las funciones de correo.
+- Una cuenta gratuita de Upstash QStash para los recordatorios push con hora exacta.
 
 ## Instalación local
 
@@ -157,6 +164,9 @@ TURSO_AUTH_TOKEN=
 | `VAPID_PUBLIC_KEY` | Para push | Clave pública utilizada por el navegador para crear la suscripción. |
 | `VAPID_PRIVATE_KEY` | Para push | Clave privada del servidor; nunca debe incluirse en el código del cliente. |
 | `VAPID_SUBJECT` | Para push | URL HTTPS o contacto `mailto:` que identifica al emisor. |
+| `QSTASH_TOKEN` | Para push programado | Autoriza la creación y cancelación de entregas en QStash. |
+| `QSTASH_CURRENT_SIGNING_KEY` | Para push programado | Verifica que la llamada de entrega proviene de QStash. |
+| `QSTASH_NEXT_SIGNING_KEY` | Para push programado | Permite rotar la firma sin interrumpir entregas. |
 | `PORT` | No | Puerto local; usa `3000` por defecto. |
 
 Puedes generar secretos seguros con:
@@ -212,7 +222,16 @@ npx web-push generate-vapid-keys
 
 Guarda el resultado en `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY`, y configura `VAPID_SUBJECT` con la URL pública de la aplicación. Los usuarios podrán activar o desactivar las notificaciones de cada dispositivo desde **Ajustes → Mi perfil**. En iPhone y iPad la página debe estar agregada a la pantalla principal; en Android funciona como PWA instalada.
 
-Las claves VAPID no sustituyen a Resend. Web Push se utiliza para tareas nuevas, anuncios y el aviso diario de entregas dentro de las próximas 24 horas; los recordatorios personales con hora exacta continúan enviándose por correo.
+Las claves VAPID no sustituyen a Resend. Web Push se utiliza para tareas nuevas, anuncios y entregas próximas. El centro de Recordatorios permite además programar avisos personales por correo, push o ambos medios.
+
+## Configurar QStash
+
+1. Crea una cuenta en Upstash y abre **QStash**.
+2. Copia el token y las dos claves de firma de la consola.
+3. Guarda los valores en `QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY` y `QSTASH_NEXT_SIGNING_KEY`.
+4. Comprueba que `APP_URL` apunte a la URL HTTPS pública de producción.
+
+El plan gratuito de QStash permite retrasar una entrega hasta siete días. Los recordatorios más lejanos permanecen en Turso y el cron diario los programa automáticamente al entrar en esa ventana. QStash conserva la hora exacta y firma cada llamada; la API verifica esa firma antes de enviar el push.
 
 ## Despliegue en Vercel
 
@@ -242,7 +261,7 @@ npm run smoke        # comprobación de un despliegue
 npm audit --omit=dev
 ```
 
-La versión 2.5.0 cuenta con pruebas para registro verificado, expiración y bloqueo de códigos, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, filtrado de tareas por unidad, suscripciones push, recordatorios, anuncios, papelera, exportaciones e interfaz móvil.
+La versión 2.6.0 cuenta con pruebas para registro verificado, recuperación de contraseña, aislamiento entre grupos, permisos, materias expandibles, suscripciones push, recordatorios personales por correo y push, programación diferida con QStash, edición, cancelación, anuncios, papelera, exportaciones e interfaz móvil.
 
 ## Seguridad
 
@@ -253,6 +272,7 @@ La versión 2.5.0 cuenta con pruebas para registro verificado, expiración y blo
 - Las sesiones usan cookies `HttpOnly`, `SameSite=Lax` y `Secure` en producción.
 - El JWT contiene solamente el identificador del usuario y la versión de su sesión.
 - Los grupos están aislados y cada operación comprueba pertenencia y rol.
+- Las entregas de QStash se aceptan únicamente con firma válida y cada push programado es idempotente.
 - No se almacenan archivos adjuntos: únicamente metadatos y enlaces HTTP/HTTPS validados.
 
 Más detalles en [`base-de-tareas/docs/architecture.md`](base-de-tareas/docs/architecture.md).

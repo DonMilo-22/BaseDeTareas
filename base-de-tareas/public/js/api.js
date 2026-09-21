@@ -87,6 +87,10 @@ export const api = {
   deleteAnnouncement: (id, announcementId) => request(groupPath(id, `/announcements/${announcementId}`), { method: 'DELETE' }),
   addAnnouncementReminder: (id, announcementId, remind_at) => request(groupPath(id, `/announcements/${announcementId}/reminder`), json('POST', { remind_at })),
   deleteAnnouncementReminder: (id, announcementId) => request(groupPath(id, `/announcements/${announcementId}/reminder`), { method: 'DELETE' }),
+  personalReminders: id => request(groupPath(id, '/personal-reminders')),
+  createPersonalReminder: (id, data) => request(groupPath(id, '/personal-reminders'), json('POST', data)),
+  updatePersonalReminder: (id, reminderId, data) => request(groupPath(id, `/personal-reminders/${reminderId}`), json('PATCH', data)),
+  deletePersonalReminder: (id, reminderId) => request(groupPath(id, `/personal-reminders/${reminderId}`), { method: 'DELETE' }),
   semesters: id => request(groupPath(id, '/semesters')),
   exportUrl: (id, format) => groupPath(id, `/export?format=${format}`),
 };

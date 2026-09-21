@@ -20,6 +20,11 @@ async function waitFor(check, timeout = 5000) {
   throw new Error('La interfaz no alcanzó el estado esperado.');
 }
 
+function dateInputForTest(date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
 beforeAll(async () => {
   const { getDb } = await import('../src/server/db.js');
   const schema = await readFile(new URL('../database/schema.sql', import.meta.url), 'utf8');
@@ -159,6 +164,17 @@ describe('interfaz v2', () => {
     expect(document.querySelector('.mobile-agenda').textContent).toContain('El martes traer libreta y lápiz.');
     expect(document.querySelector('.mobile-nav a[href="#announcements"]')).not.toBeNull();
     expect(document.querySelector('.mobile-nav a[href="#calendar"] small').textContent).toBe('Agenda');
+
+    document.querySelector('.mobile-nav a[href="#reminders"]').click();
+    await waitFor(() => document.getElementById('view').textContent.includes('Recordatorios'));
+    document.querySelector('[data-action="new-personal-reminder"]').click();
+    const personalReminder = document.getElementById('personal-reminder-form');
+    personalReminder.elements.message.value = 'Preparar la mochila para mañana.';
+    personalReminder.elements.remind_at.value = dateInputForTest(new Date(Date.now() + 2 * 60 * 60 * 1000));
+    personalReminder.elements.email_enabled.checked = true;
+    personalReminder.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    await waitFor(() => !document.getElementById('personal-reminder-dialog').open && document.getElementById('view').textContent.includes('Preparar la mochila'));
+    expect(document.querySelector('.reminder-row').textContent).toContain('Correo');
 
     document.querySelector('[data-view="settings"]').click();
     await waitFor(() => document.getElementById('view').textContent.includes('Notificaciones push'));

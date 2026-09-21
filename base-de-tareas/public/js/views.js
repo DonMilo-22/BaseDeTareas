@@ -90,6 +90,44 @@ export function announcementsView(state) {
     </section>`;
 }
 
+function reminderChannels(item) {
+  const channels = [];
+  if (item.email_enabled) channels.push(`<span class="pill ${item.email_status === 'failed' ? 'danger' : ''}">Correo${item.email_status === 'pending' ? ' · en cola' : ''}</span>`);
+  if (item.push_enabled) channels.push(`<span class="pill ${item.push_status === 'failed' ? 'danger' : ''}">Push${item.push_status === 'pending' ? ' · en cola' : ''}</span>`);
+  return channels.join('');
+}
+
+function reminderRow(item) {
+  const when = new Date(item.remind_at);
+  const day = new Intl.DateTimeFormat('es-MX', { day: '2-digit' }).format(when);
+  const month = new Intl.DateTimeFormat('es-MX', { month: 'short' }).format(when).replace('.', '');
+  const targetLabel = item.target.type === 'task' ? `Tarea · ${item.target.title}`
+    : item.target.type === 'announcement' ? 'Anuncio vinculado' : 'Sin vínculo';
+  return `<article class="reminder-row ${item.status === 'attention' ? 'needs-attention' : ''}" data-reminder-id="${esc(item.id)}">
+    <div class="reminder-date" aria-hidden="true"><strong>${esc(day)}</strong><small>${esc(month)}</small></div>
+    <div class="reminder-copy">
+      <div class="reminder-time"><time datetime="${esc(item.remind_at)}">${esc(dateTime(item.remind_at, { weekday: 'long' }))}</time>${reminderChannels(item)}</div>
+      <h2>${esc(item.message)}</h2>
+      <button type="button" class="reminder-target" data-action="open-reminder-target" ${item.target.type === 'personal' ? 'disabled' : ''}>${esc(targetLabel)}${item.target.detail ? ` · ${esc(item.target.detail)}` : ''}</button>
+      ${item.status === 'attention' ? `<p class="reminder-error">No se pudo programar uno de los medios. Edita el recordatorio para volver a intentarlo.</p>` : ''}
+    </div>
+    <div class="reminder-actions"><button class="button secondary small" data-action="edit-personal-reminder">Editar</button><button class="button ghost small" data-action="delete-personal-reminder">Eliminar</button></div>
+  </article>`;
+}
+
+export function remindersView(state) {
+  const now = Date.now();
+  const upcoming = state.reminders.filter(item => new Date(item.remind_at).getTime() > now);
+  const history = state.reminders.filter(item => new Date(item.remind_at).getTime() <= now).sort((a, b) => new Date(b.remind_at) - new Date(a.remind_at));
+  return `
+    ${pageHead('Avisos personales', 'Recordatorios', 'Programa lo que necesitas recordar y elige cómo quieres recibirlo.', '<button class="button primary" data-action="new-personal-reminder">＋ Nuevo recordatorio</button>')}
+    <section class="reminder-queue surface">
+      <div class="panel-head"><div><h2>Próximos</h2><p class="muted">Ordenados por la fecha en que serán enviados.</p></div><span class="pill">${upcoming.length}</span></div>
+      <div class="reminder-list">${upcoming.length ? upcoming.map(reminderRow).join('') : emptyState('◇', 'No tienes recordatorios pendientes', 'Crea uno con texto libre o vincúlalo con una tarea o anuncio.', '<button class="button primary" data-action="new-personal-reminder">Crear recordatorio</button>')}</div>
+    </section>
+    ${history.length ? `<details class="panel surface collapsible-panel reminder-history"><summary class="panel-head"><div><h2>Historial reciente</h2><p class="muted">Recordatorios enviados durante los últimos 30 días.</p></div><span class="summary-actions"><span class="pill">${history.length}</span><span class="collapse-chevron">⌄</span></span></summary><div class="reminder-list">${history.map(reminderRow).join('')}</div></details>` : ''}`;
+}
+
 export function classesView(state) {
   return `
     ${pageHead('Tu semestre', 'Materias', 'Abre una materia y explora sus unidades sin llenar la pantalla de información.', isManager(state.group) ? '<button class="button primary" data-action="new-class">＋ Nueva materia</button>' : '')}

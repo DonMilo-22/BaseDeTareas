@@ -1,6 +1,6 @@
 import { api, ApiError } from './api.js';
 import { avatar, dateInput, dateTime, emptyState, esc, isManager, roleLabel, taskRow, toast } from './ui.js';
-import { announcementsView, calendarView, classesView, homeView, settingsView, tasksView, teamView } from './views.js';
+import { announcementsView, calendarView, classesView, homeView, remindersView, settingsView, tasksView, teamView } from './views.js';
 import { disablePush, enablePush, getPushState, sendTestPush } from './push.js';
 
 const state = {
@@ -10,6 +10,8 @@ const state = {
   classes: [],
   tasks: [],
   announcements: [],
+  reminders: [],
+  reminderCapabilities: { email: false, push: false, push_devices: 0, qstash_configured: false },
   dashboard: null,
   members: [],
   activity: [],
@@ -47,7 +49,7 @@ function applyTheme(theme = 'system', accentColor = '#4f46e5') {
 
 function currentView() {
   const requested = location.hash.replace('#', '').split('?')[0];
-  return ['home', 'tasks', 'announcements', 'calendar', 'classes', 'team', 'settings'].includes(requested) ? requested : 'home';
+  return ['home', 'tasks', 'announcements', 'calendar', 'reminders', 'classes', 'team', 'settings'].includes(requested) ? requested : 'home';
 }
 
 function setBusy(form, busy) {
@@ -186,6 +188,11 @@ async function navigate() {
     } else if (state.view === 'calendar') {
       await Promise.all([reloadTasks(), reloadAnnouncements()]);
       view.innerHTML = calendarView(state);
+    } else if (state.view === 'reminders') {
+      const data = await api.personalReminders(state.group.id);
+      state.reminders = data.reminders;
+      state.reminderCapabilities = data.capabilities;
+      view.innerHTML = remindersView(state);
     } else if (state.view === 'classes') {
       state.classes = (await api.classes(state.group.id)).classes;
       if (!state.classes.some(item => item.id === state.expandedClassId)) state.expandedClassId = null;
@@ -231,6 +238,8 @@ function bindStaticEvents() {
   document.getElementById('class-form').addEventListener('submit', saveClass);
   document.getElementById('announcement-form').addEventListener('submit', saveAnnouncement);
   document.getElementById('announcement-reminder-form').addEventListener('submit', saveAnnouncementReminder);
+  document.getElementById('personal-reminder-form').addEventListener('submit', savePersonalReminder);
+  document.getElementById('personal-reminder-form').elements.reference_type.addEventListener('change', updatePersonalReminderReference);
   document.getElementById('announcement-form').elements.enable_reminder.addEventListener('change', event => {
     document.getElementById('announcement-reminder-time').hidden = !event.target.checked;
     document.getElementById('announcement-form').elements.remind_at.required = event.target.checked;
@@ -447,6 +456,10 @@ async function handleViewClick(event) {
   if (action === 'new-task') return openTaskForm();
   if (action === 'new-class') return openClassForm();
   if (action === 'new-announcement') return openAnnouncementForm();
+  if (action === 'new-personal-reminder') return openPersonalReminderForm();
+  if (action === 'edit-personal-reminder') return openPersonalReminderForm(state.reminders.find(item => item.id === event.target.closest('[data-reminder-id]').dataset.reminderId));
+  if (action === 'delete-personal-reminder') return deletePersonalReminder(event.target.closest('[data-reminder-id]').dataset.reminderId);
+  if (action === 'open-reminder-target') return openReminderTarget(state.reminders.find(item => item.id === event.target.closest('[data-reminder-id]').dataset.reminderId));
   if (action === 'edit-announcement') return openAnnouncementForm(state.announcements.find(item => item.id === event.target.closest('[data-announcement-id]').dataset.announcementId));
   if (action === 'delete-announcement') return deleteAnnouncement(event.target.closest('[data-announcement-id]').dataset.announcementId);
   if (action === 'announcement-reminder') return openAnnouncementReminder(event.target.closest('[data-announcement-id]').dataset.announcementId);
@@ -829,6 +842,97 @@ async function deleteAnnouncementReminder(announcementId) {
     await reloadAnnouncements(); view.innerHTML = announcementsView(state);
     toast('Recordatorio cancelado.', 'success');
   } catch (error) { handleError(error); }
+}
+
+function updatePersonalReminderReference() {
+  const form = document.getElementById('personal-reminder-form');
+  const type = form.elements.reference_type.value;
+  const wrapper = document.getElementById('personal-reminder-reference');
+  const select = form.elements.reference_id;
+  wrapper.hidden = !type;
+  select.required = Boolean(type);
+  if (!type) {
+    select.innerHTML = '';
+    return;
+  }
+  const options = type === 'task'
+    ? state.tasks.map(item => ({ id: item.id, label: `${item.title} · ${item.class_name}` }))
+    : state.announcements.map(item => ({ id: item.id, label: `${item.body.slice(0, 90)}${item.body.length > 90 ? '…' : ''}` }));
+  select.innerHTML = `<option value="">Selecciona ${type === 'task' ? 'una tarea' : 'un anuncio'}</option>${options.map(item => `<option value="${esc(item.id)}">${esc(item.label)}</option>`).join('')}`;
+}
+
+function openPersonalReminderForm(item) {
+  const form = document.getElementById('personal-reminder-form');
+  form.reset();
+  form.elements.id.value = item?.id || '';
+  form.elements.message.value = item?.message || '';
+  form.elements.remind_at.min = dateInput(new Date(Date.now() + 120_000));
+  form.elements.remind_at.value = item?.remind_at ? dateInput(item.remind_at) : dateInput(new Date(Date.now() + 60 * 60 * 1000));
+  form.elements.reference_type.value = item?.task_id ? 'task' : item?.announcement_id ? 'announcement' : '';
+  form.elements.email_enabled.checked = item ? item.email_enabled : state.reminderCapabilities.email;
+  form.elements.push_enabled.checked = item ? item.push_enabled : !state.reminderCapabilities.email && state.reminderCapabilities.push;
+  form.elements.email_enabled.disabled = !state.reminderCapabilities.email;
+  form.elements.push_enabled.disabled = !state.reminderCapabilities.push;
+  updatePersonalReminderReference();
+  form.elements.reference_id.value = item?.task_id || item?.announcement_id || '';
+  document.getElementById('personal-reminder-form-title').textContent = item ? 'Editar recordatorio' : 'Nuevo recordatorio';
+  const help = [];
+  if (!state.reminderCapabilities.email) help.push('Activa los correos desde Ajustes para usar ese medio.');
+  if (!state.reminderCapabilities.qstash_configured) help.push('Las notificaciones programadas todavía requieren configurar QStash.');
+  else if (!state.reminderCapabilities.push_devices) help.push('Activa las notificaciones push en Ajustes desde al menos un dispositivo.');
+  document.getElementById('personal-reminder-channel-help').textContent = help.join(' ');
+  document.getElementById('personal-reminder-dialog').showModal();
+}
+
+async function savePersonalReminder(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.elements.email_enabled.checked && !form.elements.push_enabled.checked) {
+    toast('Elige correo, notificación push o ambos.', 'error');
+    return;
+  }
+  setBusy(form, true);
+  try {
+    const id = form.elements.id.value;
+    const referenceType = form.elements.reference_type.value;
+    const referenceId = form.elements.reference_id.value || null;
+    const payload = {
+      message: form.elements.message.value,
+      remind_at: new Date(form.elements.remind_at.value).toISOString(),
+      email_enabled: form.elements.email_enabled.checked,
+      push_enabled: form.elements.push_enabled.checked,
+      task_id: referenceType === 'task' ? referenceId : null,
+      announcement_id: referenceType === 'announcement' ? referenceId : null,
+    };
+    const data = id
+      ? await api.updatePersonalReminder(state.group.id, id, payload)
+      : await api.createPersonalReminder(state.group.id, payload);
+    form.closest('dialog').close();
+    const refreshed = await api.personalReminders(state.group.id);
+    state.reminders = refreshed.reminders;
+    state.reminderCapabilities = refreshed.capabilities;
+    view.innerHTML = remindersView(state);
+    toast(id ? 'Recordatorio actualizado.' : 'Recordatorio programado.', data.warnings?.length ? 'info' : 'success');
+  } catch (error) { handleError(error); }
+  finally { setBusy(form, false); }
+}
+
+async function deletePersonalReminder(reminderId) {
+  if (!confirm('¿Eliminar este recordatorio? Los envíos programados también se cancelarán.')) return;
+  try {
+    await api.deletePersonalReminder(state.group.id, reminderId);
+    state.reminders = state.reminders.filter(item => item.id !== reminderId);
+    view.innerHTML = remindersView(state);
+    toast('Recordatorio eliminado.', 'success');
+  } catch (error) { handleError(error); }
+}
+
+function openReminderTarget(item) {
+  if (!item) return;
+  if (item.task_id) {
+    location.hash = 'tasks';
+    setTimeout(() => openTaskDetail(item.task_id), 0);
+  } else if (item.announcement_id) location.hash = 'announcements';
 }
 
 async function deleteAnnouncement(announcementId) {
